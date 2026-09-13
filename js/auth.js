@@ -6,6 +6,20 @@
 
 const CLAVE_TOKEN = "pgc_token";
 
+/**
+ * Diccionario de traducción de roles: la BD y el frontend no usan
+ * los mismos nombres (ej. la BD dice "Profesor", nosotros decimos
+ * "docente"). Aquí se resuelve esa diferencia en un solo lugar,
+ * para que sidebar.js y navbar.js no tengan que saber nada de esto.
+ */
+const TRADUCCION_ROLES = {
+  "Estudiante": "estudiante",
+  "Profesor": "docente",
+  "Jurado": "jurado",
+  "Encargado de Ciclo": "coordinador",
+  "Administrador": "administrador",
+};
+
 /** Guarda el JWT recibido del backend. */
 function guardarToken(token) {
   localStorage.setItem(CLAVE_TOKEN, token);
@@ -34,10 +48,21 @@ function estaAutenticado() {
   return payload.exp * 1000 > Date.now();
 }
 
-/** Devuelve el payload del usuario actual (id, nombre, rol...) o null. */
+/**
+ * Devuelve el payload del usuario actual (id, nombre, rol...) o null.
+ * El campo "rol" se traduce con TRADUCCION_ROLES antes de entregarlo,
+ * para que el resto del frontend siempre reciba los nombres que ya
+ * usa (estudiante, docente, coordinador, jurado, administrador).
+ */
 function obtenerUsuario() {
   const token = obtenerToken();
-  return token ? decodificarJWT(token) : null;
+  const payload = token ? decodificarJWT(token) : null;
+  if (!payload) return null;
+
+  const rolTraducido = TRADUCCION_ROLES[payload.rol];
+  payload.rol = rolTraducido || payload.rol.toLowerCase();
+
+  return payload;
 }
 
 /**
@@ -54,16 +79,19 @@ async function iniciarSesion(correo, clave) {
     const res = await fetch(`${URL_API}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ correo, clave }),
+      body: JSON.stringify({ correo, contrasena: clave }),
     });
 
     const data = await res.json().catch(() => ({}));
 
-    if (res.status === 404 || data.codigo === "CORREO_NO_REGISTRADO") {
-      return { ok: false, mensaje: "Correo electrónico no registrado.", campos: ["f-correo"] };
+    if (res.status === 400) {
+      return { ok: false, mensaje: data.mensaje || "Debe completar todos los campos.", campos: ["f-correo", "f-clave"] };
     }
-    if (res.status === 401 || data.codigo === "CLAVE_INCORRECTA") {
-      return { ok: false, mensaje: "Contraseña incorrecta.", campos: ["f-clave"] };
+    if (res.status === 404) {
+      return { ok: false, mensaje: data.mensaje || "Correo electrónico no registrado.", campos: ["f-correo"] };
+    }
+    if (res.status === 401) {
+      return { ok: false, mensaje: data.mensaje || "Contraseña incorrecta.", campos: ["f-clave"] };
     }
     if (!res.ok) {
       return { ok: false, mensaje: data.mensaje || "No fue posible iniciar sesión.", campos: [] };

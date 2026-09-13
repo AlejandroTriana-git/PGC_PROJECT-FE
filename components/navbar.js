@@ -16,6 +16,7 @@ const ETIQUETAS_ROL = {
   docente: { label: "Docente", color: "var(--naranja)" },
   coordinador: { label: "Coordinador", color: "var(--oro)" },
   jurado: { label: "Jurado", color: "var(--verde-brillante)" },
+  administrador: { label: "Administrador", color: "var(--gris)" },
 };
 
 function renderizarBarraSuperior(idContenedor) {

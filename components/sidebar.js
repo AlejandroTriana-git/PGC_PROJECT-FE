@@ -34,6 +34,14 @@ const MENU_POR_ROL = {
     { id: "reportes", label: "Evaluaciones", href: "reportes.html" },
     { id: "perfil", label: "Mi perfil", href: "perfil.html" },
   ],
+  // Pendiente confirmar alcance real con el equipo; de momento
+  // se le da acceso similar al de coordinador.
+  administrador: [
+    { id: "dashboard", label: "Inicio", href: "dashboard.html" },
+    { id: "usuarios", label: "Usuarios", href: "usuarios.html" },
+    { id: "reportes", label: "Reportes", href: "reportes.html" },
+    { id: "perfil", label: "Mi perfil", href: "perfil.html" },
+  ],
 };
 
 function renderizarBarraLateral(idContenedor, paginaActiva) {
