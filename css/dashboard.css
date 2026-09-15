@@ -1,4 +1,33 @@
-/*
-Estilos específicos de dashboard.html.
-Diseño de widgets, tarjetas de resumen e indicadores.
-*/
+/* ============================================================
+   DASHBOARD.CSS — estilos EXCLUSIVOS de dashboard.html.
+   El layout de topbar/sidebar/footer ya vive en global.css;
+   aquí solo van las tarjetas de resumen propias de esta vista.
+   ============================================================ */
+
+.page-head h1 {
+  font-size: clamp(1.4rem, 3vw, 1.9rem);
+  font-weight: 800;
+  color: var(--verde-udec);
+}
+
+.card-resumen {
+  background: #fff;
+  border-radius: var(--bs-border-radius-lg);
+  padding: 1.2rem 1.4rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .06);
+  display: flex;
+  flex-direction: column;
+  gap: .3rem;
+}
+.card-resumen .label {
+  font-size: .78rem;
+  font-weight: 700;
+  color: var(--gris);
+  text-transform: uppercase;
+  letter-spacing: .02em;
+}
+.card-resumen .valor {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--verde-udec);
+}

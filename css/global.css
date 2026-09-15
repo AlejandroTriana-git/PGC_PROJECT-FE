@@ -1,5 +1,243 @@
-/*
-Estilos generales.
-Variables, reset, tipografía base y estilos compartidos
-por todas las páginas del frontend.
-*/
+/* ============================================================
+   GLOBAL.CSS — Sistema de diseño único del proyecto PGC.
+   Se incluye en TODAS las páginas junto a Bootstrap 5.
+   Aquí viven: paleta de color oficial UDEC (Manual de Imagen
+   ECOM 002 V.15), tipografía, y los bloques reutilizables
+   (topbar, sidebar, banners, chips, footer) para que cada
+   vista nueva NO tenga que reescribir estos estilos: solo
+   importa este archivo y usa las clases de abajo.
+   ============================================================ */
+
+/* ---- Paleta oficial UDEC ---- */
+:root {
+  --verde-udec:      #00482B;
+  --verde-medio:     #007B3E;
+  --verde-brillante: #79C000;
+  --oro:             #DAAA00;
+  --naranja:         #F7931E;
+  --teal:            #00A99D;
+  --amarillo:        #FBE122;
+  --rojo-error:      #C0392B;
+  --gris:            #4d4d4d;
+  --blanco:          #FFFFFF;
+  --bg-app:          #F4F6F4;
+
+  /* Colores por rol: se reutilizan en login, navbar y tablas */
+  --rol-estudiante:   var(--teal);
+  --rol-docente:      var(--naranja);
+  --rol-coordinador:  var(--oro);
+  --rol-jurado:       var(--verde-brillante);
+
+  /* Sobrescritura de variables de Bootstrap 5 para que sus
+     componentes (btn, form-control, nav, etc.) hereden la
+     identidad UDEC en lugar del azul por defecto. */
+  --bs-primary: var(--verde-medio);
+  --bs-primary-rgb: 0, 123, 62;
+  --bs-body-font-family: 'Montserrat', 'Century Gothic', sans-serif;
+  --bs-body-color: var(--gris);
+  --bs-body-bg: var(--bg-app);
+  --bs-border-radius: 9px;
+  --bs-border-radius-sm: 7px;
+  --bs-border-radius-lg: 12px;
+  --bs-link-color: var(--verde-medio);
+  --bs-link-hover-color: var(--verde-udec);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  min-height: 100%;
+}
+
+body {
+  background: var(--bg-app);
+  color: var(--gris);
+  font-family: var(--bs-body-font-family);
+  -webkit-font-smoothing: antialiased;
+}
+
+a { text-decoration: none; }
+
+/* ---- Botones: Bootstrap toma --bs-primary, pero el hover
+   necesita el verde oscuro institucional ---- */
+.btn-primary {
+  background-color: var(--verde-medio);
+  border-color: var(--verde-medio);
+  font-weight: 700;
+}
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:active {
+  background-color: var(--verde-udec) !important;
+  border-color: var(--verde-udec) !important;
+}
+
+.btn-outline-primary {
+  color: var(--verde-medio);
+  border-color: var(--verde-medio);
+}
+.btn-outline-primary:hover {
+  background-color: var(--verde-medio);
+  border-color: var(--verde-medio);
+}
+
+/* ---- Campos de formulario con foco institucional ---- */
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--verde-medio);
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 62, 0.15);
+}
+.form-label {
+  font-size: .78rem;
+  font-weight: 700;
+  color: var(--verde-udec);
+  margin-bottom: .4rem;
+}
+
+/* Campo marcado como inválido tras la respuesta del backend
+   (ej. "correo no registrado", "clave incorrecta"). Se aplica
+   agregando la clase .invalid al contenedor del campo. */
+.invalid .form-control {
+  border-color: var(--rojo-error);
+  box-shadow: 0 0 0 0.2rem rgba(192, 57, 43, 0.12);
+}
+
+/* ============================================================
+   TOPBAR — encabezado institucional (escudo ).
+   Se inyecta vía components/navbar.js en un <div id="topbar">.
+   No se reescribe en cada página: solo se declara aquí una vez.
+   ============================================================ */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .7rem;
+  padding: .8rem clamp(1.25rem, 5vw, 3.5rem);
+  background: var(--verde-udec);
+}
+
+.logo-topbar {
+  height: 60px;
+  width: auto;
+}
+
+.topbar .usuario-box {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  color: #fff;
+  font-size: .82rem;
+}
+.topbar .usuario-box .rol-chip { font-size: .68rem; padding: .25rem .6rem; }
+.topbar .btn-salir {
+  background: transparent;
+  border: 1px solid #ffffff40;
+  color: #fff;
+  font-size: .78rem;
+  font-weight: 600;
+  padding: .35rem .8rem;
+  border-radius: 100px;
+  cursor: pointer;
+  transition: background .15s ease;
+}
+.topbar .btn-salir:hover { background: #ffffff1a; }
+
+/* ============================================================
+   APP SHELL — estructura de las páginas internas (todo lo que
+   no es el login): sidebar + contenido. dashboard.html,
+   usuarios.html, reportes.html y perfil.html comparten este
+   layout sin reescribirlo.
+   ============================================================ */
+.app-shell {
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  min-height: calc(100vh - 64px - 52px); /* topbar + footer aprox */
+}
+@media (max-width: 880px) {
+  .app-shell { grid-template-columns: 1fr; }
+}
+
+.sidebar {
+  background: var(--verde-udec);
+  padding: 1.4rem 1rem;
+}
+.sidebar .nav-link {
+  color: #DDEAE0;
+  font-weight: 600;
+  font-size: .88rem;
+  border-radius: 9px;
+  padding: .65rem .9rem;
+  margin-bottom: .25rem;
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+}
+.sidebar .nav-link.active,
+.sidebar .nav-link:hover {
+  background: #ffffff1a;
+  color: #fff;
+}
+
+.main-content {
+  padding: clamp(1.25rem, 4vw, 2.5rem);
+}
+
+/* ---- Footer institucional (obligatorio en toda pieza, según
+   el Manual de Imagen: logosímbolo/URL + Vigilada MinEducación) ---- */
+footer.app-footer {
+  background: var(--verde-udec);
+  color: #EAF3EC;
+  padding: .9rem clamp(1.25rem, 5vw, 3.5rem);
+  font-size: .76rem;
+  text-align: center;
+}
+footer.app-footer strong { color: #fff; }
+
+/* ============================================================
+   BLOQUES REUTILIZABLES (banners, chips) — nacieron en el
+   mockup de login y se generalizan aquí para cualquier vista
+   que necesite mostrar mensajes de estado o etiquetas de rol.
+   ============================================================ */
+.banner {
+  display: flex;
+  align-items: flex-start;
+  gap: .6rem;
+  padding: .75rem .9rem;
+  border-radius: 9px;
+  font-size: .82rem;
+  font-weight: 600;
+  margin-bottom: 1.2rem;
+  border: 1px solid transparent;
+}
+.banner.error   { background: #C0392B14; color: var(--rojo-error);  border-color: #C0392B33; }
+.banner.success { background: #007B3E14; color: var(--verde-medio); border-color: #007B3E33; }
+.banner .ic { flex-shrink: 0; margin-top: .05rem; }
+
+.role-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .4rem .85rem;
+  border-radius: 100px;
+  font-size: .8rem;
+  font-weight: 600;
+  background: #ffffff14;
+  border: 1px solid #ffffff26;
+  color: #fff;
+}
+.role-chip .dot { width: 8px; height: 8px; border-radius: 50%; }
+
+/* Chip de rol para usarse sobre fondo claro (tablas, tarjetas) */
+.chip-rol {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .3rem .7rem;
+  border-radius: 100px;
+  font-size: .74rem;
+  font-weight: 700;
+  color: var(--verde-udec);
+  background: #00482B0d;
+}
+
+.hidden { display: none !important; }
