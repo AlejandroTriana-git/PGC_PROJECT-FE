@@ -57,8 +57,11 @@ function decodificarJWT(token) {
  */
 async function peticionApi(ruta, opciones = {}) {
   const token = obtenerToken();
+  // Si el body es FormData, NO se fija Content-Type: el navegador lo hace
+  // automáticamente con el boundary correcto (multipart/form-data).
+  const esFormData = opciones.body instanceof FormData;
   const encabezados = Object.assign(
-    { "Content-Type": "application/json" },
+    esFormData ? {} : { "Content-Type": "application/json" },
     opciones.headers || {},
     token ? { Authorization: `Bearer ${token}` } : {}
   );
@@ -71,3 +74,43 @@ async function peticionApi(ruta, opciones = {}) {
   }
   return res;
 }
+
+/**
+ * Renderiza el bloque del enlace al PDF dentro de un elemento
+ * contenedor. Muestra el link y una nota de expiración discreta.
+ *
+ * @param {HTMLElement} contenedor - Elemento donde se inyecta el HTML.
+ * @param {{ url: string, "expira-en-segundos": number } | null | undefined} pdf
+ *   Objeto tal como lo devuelve el backend.
+ */
+function renderEnlacePdf(contenedor, pdf) {
+  if (!contenedor) return;
+
+  if (!pdf || !pdf.url) {
+    contenedor.innerHTML = `<span class="text-muted fst-italic" style="font-size:.82rem;">Sin documento adjunto.</span>`;
+    return;
+  }
+
+  const segundos = pdf["expira-en-segundos"] ?? pdf.expira_en_segundos ?? 0;
+
+  if (segundos <= 0) {
+    contenedor.innerHTML = `
+      <span class="text-muted fst-italic" style="font-size:.82rem;">
+        El enlace del PDF ha expirado. Recarga la página para obtener uno nuevo.
+      </span>`;
+    return;
+  }
+
+  const minutos = Math.round(segundos / 60);
+  const textoExpira = minutos >= 60
+    ? `Disponible por ${Math.round(minutos / 60)} h`
+    : `Disponible por ${minutos} min`;
+
+  contenedor.innerHTML = `
+    <a href="${pdf.url}" target="_blank" rel="noopener"
+       style="font-weight:600;color:var(--verde-medio);">
+      📄 Ver documento PDF
+    </a>
+    <span class="text-muted ms-2" style="font-size:.75rem;">(${textoExpira})</span>`;
+}
+

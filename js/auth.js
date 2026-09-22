@@ -5,19 +5,21 @@
 // ============================================================
 
 const CLAVE_TOKEN = "pgc_token";
+const CLAVE_CONTEXTO = "pgc_contexto_activo";
 
 /**
  * Diccionario de traducción de roles: la BD y el frontend no usan
  * los mismos nombres (ej. la BD dice "Profesor", nosotros decimos
- * "docente"). Aquí se resuelve esa diferencia en un solo lugar,
- * para que sidebar.js y navbar.js no tengan que saber nada de esto.
+ * "docente"). Aquí se resuelve esa diferencia en un solo lugar.
+ *
+ * OJO: "Jurado" y "Encargado de Ciclo" ya NO son roles — son
+ * capacidades por ciclo que trae un "Profesor" en los arreglos
+ * encargado_de / jurado_de (ver obtenerUsuario más abajo).
  */
 const TRADUCCION_ROLES = {
   "Estudiante": "estudiante",
   "Profesor": "docente",
-  "Jurado": "jurado",
-  "Encargado de Ciclo": "coordinador",
-  "Administrador": "administrador",
+  "Coordinador": "coordinador",
 };
 
 /** Guarda el JWT recibido del backend. */
@@ -33,6 +35,22 @@ function obtenerToken() {
 /** Elimina el JWT (cierre de sesión). */
 function eliminarToken() {
   localStorage.removeItem(CLAVE_TOKEN);
+  localStorage.removeItem(CLAVE_CONTEXTO);
+}
+
+/**
+ * Devuelve el contexto activo del Profesor: "docente" (por
+ * defecto), "encargado" o "jurado". Un Profesor siempre aterriza
+ * en "docente" al iniciar sesión; solo cambia si usa el menú
+ * desplegable del topbar (ver navbar.js).
+ */
+function obtenerContextoActivo() {
+  return localStorage.getItem(CLAVE_CONTEXTO) || "docente";
+}
+
+/** Guarda el contexto activo elegido desde el menú del topbar. */
+function establecerContextoActivo(contexto) {
+  localStorage.setItem(CLAVE_CONTEXTO, contexto);
 }
 
 /**
@@ -49,10 +67,18 @@ function estaAutenticado() {
 }
 
 /**
- * Devuelve el payload del usuario actual (id, nombre, rol...) o null.
- * El campo "rol" se traduce con TRADUCCION_ROLES antes de entregarlo,
- * para que el resto del frontend siempre reciba los nombres que ya
- * usa (estudiante, docente, coordinador, jurado, administrador).
+ * Devuelve el payload del usuario actual (id, nombre, rol,
+ * encargado_de, jurado_de...) o null.
+ *
+ * - "rol" se traduce con TRADUCCION_ROLES antes de entregarlo.
+ * - "encargado_de" y "jurado_de" vienen tal cual del backend
+ *   (arreglos de id_cycle) — no necesitan traducción, solo se
+ *   les pone un respaldo de arreglo vacío por si algún día el
+ *   backend no los manda para un rol que no los usa.
+ *
+ * Con esto, sidebar.js y navbar.js arman el menú y los chips
+ * combinando "rol" + estos dos arreglos, en vez de depender de
+ * un único nombre de rol fijo.
  */
 function obtenerUsuario() {
   const token = obtenerToken();
@@ -61,6 +87,8 @@ function obtenerUsuario() {
 
   const rolTraducido = TRADUCCION_ROLES[payload.rol];
   payload.rol = rolTraducido || payload.rol.toLowerCase();
+  payload.encargado_de = payload.encargado_de || [];
+  payload.jurado_de = payload.jurado_de || [];
 
   return payload;
 }
@@ -124,5 +152,38 @@ function cerrarSesion(mensaje) {
 function requerirAutenticacion() {
   if (!estaAutenticado()) {
     cerrarSesion("Debe iniciar sesión para acceder a esta página.");
+  }
+}
+
+/**
+ * Bloquea el acceso a una página que requiere una capacidad
+ * específica del Profesor: "encargado" o "jurado". Reutiliza
+ * requerirAutenticacion() (así nunca se te olvida esa parte) y
+ * además valida que el arreglo correspondiente no esté vacío.
+ * Si no cumple, lo devuelve a su dashboard.
+ */
+function requerirCapacidad(capacidad) {
+  requerirAutenticacion();
+  const usuario = obtenerUsuario();
+  const lista = usuario ? usuario[`${capacidad}_de`] : [];
+  if (!lista || lista.length === 0) {
+    window.location.href = "dashboard.html";
+  }
+}
+
+/**
+ * Bloquea el acceso a una página reservada a uno o varios roles
+ * puntuales (ej. "administrador" para usuarios.html, o
+ * ["docente", "administrador"] para reportes.html, que la ven
+ * ambos roles). Acepta un string o un arreglo. Reutiliza
+ * requerirAutenticacion() y compara el rol ya traducido de
+ * obtenerUsuario(). Si no coincide, lo devuelve a su dashboard.
+ */
+function requerirRol(roles) {
+  requerirAutenticacion();
+  const usuario = obtenerUsuario();
+  const permitidos = Array.isArray(roles) ? roles : [roles];
+  if (!usuario || !permitidos.includes(usuario.rol)) {
+    window.location.href = "dashboard.html";
   }
 }
