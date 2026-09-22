@@ -13,7 +13,8 @@ async function pintarIntegrantes() {
   const contenedor = document.getElementById("lista-integrantes");
 
   try {
-    const res = await peticionApi("/estudiantes?ciclo=mismo");
+    // El BE obtiene el ciclo del estudiante a través del token (no se envía ?ciclo)
+    const res = await peticionApi("/estudiantes");
     const estudiantes = await res.json();
 
     if (!res.ok || !Array.isArray(estudiantes) || estudiantes.length === 0) {
@@ -23,10 +24,11 @@ async function pintarIntegrantes() {
 
     contenedor.innerHTML = estudiantes
       .map(
+        // Mapeo correcto: id_user (no .id), full_name (no .nombre)
         (estudiante) => `
         <div class="form-check">
-          <input class="form-check-input" type="checkbox" value="${estudiante.id}" id="integrante-${estudiante.id}">
-          <label class="form-check-label" for="integrante-${estudiante.id}">${estudiante.nombre}</label>
+          <input class="form-check-input" type="checkbox" value="${estudiante.id_user}" id="integrante-${estudiante.id_user}">
+          <label class="form-check-label" for="integrante-${estudiante.id_user}">${estudiante.full_name}</label>
         </div>`
       )
       .join("");
@@ -47,7 +49,38 @@ function validarPdf(archivo) {
   return null;
 }
 
-function inicializarRadicarPropuesta() {
+async function inicializarRadicarPropuesta() {
+  // ── Bug 1: bloquear el formulario si el estudiante ya tiene una propuesta ──
+  try {
+    const resMia = await peticionApi("/propuestas/mia");
+
+    if (resMia.ok) {
+      // Ya existe una propuesta (activa, rechazada o anulada)
+      const propuesta = await resMia.json();
+      const form = document.getElementById("form-propuesta");
+      if (form) form.classList.add("hidden");
+
+      const estadoTextos = {
+        "Pendiente de validación": "una propuesta pendiente de validación",
+        "Aprobada": "una propuesta aprobada",
+        "Rechazada": "una propuesta rechazada (puedes editarla desde \"Mi propuesta\")",
+        "Anulada": "una propuesta anulada",
+      };
+      const descripcion = estadoTextos[propuesta.estado] || "una propuesta registrada";
+
+      mostrarBanner(
+        "banner",
+        "error",
+        `Ya tienes ${descripcion}. No puedes radicar una nueva propuesta. <a href="mis-propuestas.html" style="color:inherit;font-weight:700;">Ver mi propuesta →</a>`
+      );
+      return; // No inicializar el formulario
+    }
+
+    // Si es 404 no hay propuesta → flujo normal
+  } catch {
+    // Si falla la consulta previa, dejamos que el submit la maneje
+  }
+
   pintarIntegrantes();
 
   document.getElementById("form-propuesta").addEventListener("submit", async (evento) => {
@@ -65,9 +98,10 @@ function inicializarRadicarPropuesta() {
     // Leer los integrantes marcados desde los checkboxes generados dinámicamente.
     const contenedorIntegrantes = document.getElementById("lista-integrantes");
     const estudiantesDisponibles = JSON.parse(contenedorIntegrantes.dataset.estudiantes || "[]");
+    // Usar id_user (no .id) para identificar integrantes
     const integrantes = estudiantesDisponibles
-      .filter((e) => document.getElementById(`integrante-${e.id}`)?.checked)
-      .map((e) => e.id);
+      .filter((e) => document.getElementById(`integrante-${e.id_user}`)?.checked)
+      .map((e) => e.id_user);
 
     if (!titulo || !categoria || !problema || !justificacion || !objetivos || !solucion) {
       mostrarBanner("banner", "error", "Debes completar todos los campos.");
@@ -86,13 +120,15 @@ function inicializarRadicarPropuesta() {
 
     try {
       const fd = new FormData();
-      fd.append("titulo", titulo);
-      fd.append("categoria", categoria);
-      fd.append("problema", problema);
-      fd.append("justificacion", justificacion);
-      fd.append("objetivos", objetivos);
-      fd.append("solucion", solucion);
-      fd.append("integrantes", JSON.stringify(integrantes));
+      // Nombres de campo tal como los espera el BE
+      fd.append("title_proposal",           titulo);
+      fd.append("descr_proposal",           categoria);
+      fd.append("problem_proposal",         problema);
+      fd.append("justification_proposal",   justificacion);
+      fd.append("objectives_proposal",      objetivos);
+      fd.append("solution_proposal",        solucion);
+      fd.append("integrantes",              JSON.stringify(integrantes));
+      // NOTA: id_cycle NO se envía — el BE lo obtiene del líder en la BD
       fd.append("pdf", archivoPdf);
 
       const res = await peticionApi("/propuestas", { method: "POST", body: fd });

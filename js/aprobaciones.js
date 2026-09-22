@@ -19,31 +19,44 @@ function pintarTabla() {
     .map(
       (propuesta) => `
       <tr>
-        <td>${propuesta.titulo}</td>
-        <td>${propuesta.lider}</td>
-        <td>${propuesta.integrantes}</td>
+        <td>${propuesta.title_proposal}</td>
+        <td>${propuesta.leader_name}</td>
+        <td>${propuesta.num_integrantes}</td>
         <td>${propuesta.ciclo}</td>
         <td class="text-end">
-          <button class="btn btn-sm btn-outline-primary" onclick="abrirDetalle(${propuesta.id})">Ver detalle</button>
+          <button class="btn btn-sm btn-outline-primary" onclick="abrirDetalle(${propuesta.id_proposal})">Ver detalle</button>
         </td>
       </tr>`
     )
     .join("");
 }
 
-function abrirDetalle(id) {
-  propuestaSeleccionada = propuestas.find((p) => p.id === id);
+async function abrirDetalle(id) {
+  // Usar id_proposal (no .id) tal como lo devuelve el BE
+  propuestaSeleccionada = propuestas.find((p) => p.id_proposal === id);
   if (!propuestaSeleccionada) return;
 
-  document.getElementById("detalle-titulo").textContent = propuestaSeleccionada.titulo;
-  document.getElementById("detalle-problema").textContent = propuestaSeleccionada.problema;
-  document.getElementById("detalle-justificacion").textContent = propuestaSeleccionada.justificacion;
-  document.getElementById("detalle-objetivos").textContent = propuestaSeleccionada.objetivos;
-  document.getElementById("detalle-solucion").textContent = propuestaSeleccionada.solucion;
-  renderEnlacePdf(
-    document.getElementById("detalle-pdf-contenedor"),
-    propuestaSeleccionada.pdf   // { url, "expira-en-segundos": 3600 }
-  );
+  // Mapeo de campos del BE al detalle del modal
+  document.getElementById("detalle-titulo").textContent          = propuestaSeleccionada.title_proposal;
+  document.getElementById("detalle-problema").textContent        = propuestaSeleccionada.problem_proposal;
+  document.getElementById("detalle-justificacion").textContent   = propuestaSeleccionada.justification_proposal;
+  document.getElementById("detalle-objetivos").textContent       = propuestaSeleccionada.objectives_proposal;
+  document.getElementById("detalle-solucion").textContent        = propuestaSeleccionada.solution_proposal;
+
+  // Bug 2: cargar URL firmada del PDF desde el BE al abrir el modal
+  const pdfContenedor = document.getElementById("detalle-pdf-contenedor");
+  pdfContenedor.innerHTML = `<span class="text-muted fst-italic" style="font-size:.82rem;">Cargando enlace del PDF…</span>`;
+  try {
+    const resPdf = await peticionApi(`/propuestas/${propuestaSeleccionada.id_proposal}/pdf`);
+    if (resPdf.ok) {
+      const pdfData = await resPdf.json();
+      renderEnlacePdf(pdfContenedor, pdfData);
+    } else {
+      renderEnlacePdf(pdfContenedor, null);
+    }
+  } catch {
+    renderEnlacePdf(pdfContenedor, null);
+  }
 
   document.getElementById("zona-rechazo").classList.add("hidden");
   document.getElementById("comentario-rechazo").value = "";
@@ -53,8 +66,10 @@ function abrirDetalle(id) {
   modalDetalle.show();
 }
 
+
 function quitarDeLaLista(id) {
-  propuestas = propuestas.filter((p) => p.id !== id);
+  // Usar id_proposal (no .id)
+  propuestas = propuestas.filter((p) => p.id_proposal !== id);
   pintarTabla();
   modalDetalle.hide();
 }
@@ -63,8 +78,18 @@ async function inicializarAprobaciones() {
   modalDetalle = new bootstrap.Modal(document.getElementById("modal-detalle"));
 
   // ── Carga las propuestas pendientes desde la API ──────────
+  // El ciclo del encargado se obtiene del JWT decodificado
   try {
-    const res = await peticionApi("/propuestas?estado=Pendiente de validación");
+    const usuario = obtenerUsuario();
+    // El encargado tiene en su JWT el campo encargado_de con el ciclo asignado
+    const id_cycle = usuario && usuario.encargado_de ? usuario.encargado_de[0] : null;
+
+    if (!id_cycle) {
+      mostrarBanner("banner", "error", "No tienes un ciclo asignado como encargado.");
+      return;
+    }
+
+    const res = await peticionApi(`/propuestas?cycle=${id_cycle}&estado=Pendiente de validación`);
     if (!res.ok) throw new Error();
     propuestas = await res.json();
   } catch {
@@ -80,18 +105,18 @@ async function inicializarAprobaciones() {
     boton.textContent = "Aprobando...";
 
     try {
-      const res = await peticionApi(`/propuestas/${propuestaSeleccionada.id}/aprobar`, { method: "PATCH" });
+      const res = await peticionApi(`/propuestas/${propuestaSeleccionada.id_proposal}/aprobar`, { method: "PATCH" });
       const json = await res.json().catch(() => ({}));
 
       mostrarBanner(
         "banner",
         res.ok ? "success" : "error",
         json.mensaje || (res.ok
-          ? `Propuesta "${propuestaSeleccionada.titulo}" aprobada.`
+          ? `Propuesta "${propuestaSeleccionada.title_proposal}" aprobada.`
           : "No fue posible aprobar la propuesta.")
       );
 
-      if (res.ok) quitarDeLaLista(propuestaSeleccionada.id);
+      if (res.ok) quitarDeLaLista(propuestaSeleccionada.id_proposal);
     } catch {
       mostrarBanner("banner", "error", "No fue posible conectar con el servidor.");
     } finally {
@@ -121,7 +146,7 @@ async function inicializarAprobaciones() {
     boton.textContent = "Rechazando...";
 
     try {
-      const res = await peticionApi(`/propuestas/${propuestaSeleccionada.id}/rechazar`, {
+      const res = await peticionApi(`/propuestas/${propuestaSeleccionada.id_proposal}/rechazar`, {
         method: "PATCH",
         body: JSON.stringify({ comentario }),
       });
@@ -131,11 +156,11 @@ async function inicializarAprobaciones() {
         "banner",
         res.ok ? "success" : "error",
         json.mensaje || (res.ok
-          ? `Propuesta "${propuestaSeleccionada.titulo}" rechazada.`
+          ? `Propuesta "${propuestaSeleccionada.title_proposal}" rechazada.`
           : "No fue posible rechazar la propuesta.")
       );
 
-      if (res.ok) quitarDeLaLista(propuestaSeleccionada.id);
+      if (res.ok) quitarDeLaLista(propuestaSeleccionada.id_proposal);
     } catch {
       mostrarBanner("banner", "error", "No fue posible conectar con el servidor.");
     } finally {

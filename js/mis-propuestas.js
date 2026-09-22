@@ -22,13 +22,18 @@ function toggleFormularioReenvio(visible) {
 /**
  * Pinta los checkboxes de integrantes desde la API y marca
  * los que ya pertenecen a la propuesta.
+ * @param {Array<number|{id_user:number}>} seleccionados - IDs o objetos de integrantes ya en la propuesta.
  */
 async function pintarIntegrantesReenvio(seleccionados) {
   const contenedor = document.getElementById("lista-integrantes-reenvio");
   if (!contenedor) return;
 
+  // Normalizar seleccionados: puede ser array de objetos {id_user} o de números
+  const idsSeleccionados = seleccionados.map((s) => (typeof s === "object" ? s.id_user : s));
+
   try {
-    const res = await peticionApi("/estudiantes?ciclo=mismo");
+    // El BE obtiene el ciclo del estudiante a través del token (no se envía ?ciclo)
+    const res = await peticionApi("/estudiantes");
     const estudiantes = await res.json();
 
     if (!res.ok || !Array.isArray(estudiantes) || estudiantes.length === 0) {
@@ -38,11 +43,12 @@ async function pintarIntegrantesReenvio(seleccionados) {
 
     contenedor.innerHTML = estudiantes
       .map((e) => {
-        const marcado = seleccionados.includes(e.id) ? "checked" : "";
+        // Mapeo correcto: id_user (no .id), full_name (no .nombre)
+        const marcado = idsSeleccionados.includes(e.id_user) ? "checked" : "";
         return `
           <div class="form-check">
-            <input class="form-check-input" type="checkbox" value="${e.id}" id="ri-${e.id}" ${marcado}>
-            <label class="form-check-label" for="ri-${e.id}">${e.nombre}</label>
+            <input class="form-check-input" type="checkbox" value="${e.id_user}" id="ri-${e.id_user}" ${marcado}>
+            <label class="form-check-label" for="ri-${e.id_user}">${e.full_name}</label>
           </div>`;
       })
       .join("");
@@ -74,34 +80,93 @@ async function inicializarMiPropuesta() {
   }
 
   const claseEstado = CLASE_POR_ESTADO[propuesta.estado] || "pendiente";
-  const esLider = usuario && usuario.id === propuesta.id_lider;
+  // Usar id_leader (no id_lider) tal como lo devuelve el BE
+  const esLider = usuario && usuario.id === propuesta.id_leader;
   const puedeReenviar = esLider && propuesta.estado === "Rechazada";
   const reenviosRestantes = 3 - (propuesta.resubmit_count || 0);
 
+  // Mapa legible de categoría
+  const CATEGORIAS = {
+    investigacion:  "Investigación",
+    desarrollo:     "Desarrollo tecnológico",
+    social:         "Proyección social",
+    emprendimiento: "Emprendimiento",
+  };
+  const categoriaTexto = CATEGORIAS[propuesta.descr_proposal] || propuesta.descr_proposal || "—";
+
+  // Nombres de integrantes: el BE ahora devuelve [{id_user, full_name}]
+  const nombresIntegrantes = Array.isArray(propuesta.integrantes) && propuesta.integrantes.length > 0
+    ? propuesta.integrantes
+        .map((i) => (typeof i === "object" ? i.full_name : `#${i}`))
+        .join(", ")
+    : "Solo el líder";
+
   contenedor.innerHTML = `
     <div class="card-resumen">
+
+      <!-- Encabezado: título + estado -->
       <span class="label">Título</span>
       <h2 style="font-size:1.2rem;font-weight:700;color:var(--verde-udec);">${propuesta.titulo}</h2>
 
-      <div class="mt-2 mb-2">
+      <div class="mt-2 mb-3">
         <span class="badge-estado ${claseEstado}">${propuesta.estado}</span>
         ${propuesta.resubmit_count > 0
-          ? `<span class="text-muted ms-2" style="font-size:.8rem;">Reenvíos: ${propuesta.resubmit_count} de 3</span>`
+          ? `<span class="text-muted ms-2" style="font-size:.8rem;">Reenvíos realizados: ${propuesta.resubmit_count} de 3</span>`
           : ""}
       </div>
 
       ${propuesta.estado === "Rechazada"
-        ? `<div class="banner error" style="margin-top:.5rem;">
-             <span>${propuesta.comentario}</span>
+        ? `<div class="banner error" style="margin-top:.5rem;margin-bottom:1rem;">
+             <span><strong>Motivo del rechazo:</strong> ${propuesta.comentario}</span>
            </div>`
         : ""}
+
+      <!-- Detalle completo de la propuesta -->
+      <div style="display:grid;gap:.75rem;margin-bottom:1rem;">
+
+        <div>
+          <span class="label">Categoría / Tipo</span>
+          <p style="margin:0;">${categoriaTexto}</p>
+        </div>
+
+        <div>
+          <span class="label">Líder</span>
+          <p style="margin:0;">${propuesta.leader_name || "—"}</p>
+        </div>
+
+        <div>
+          <span class="label">Integrantes</span>
+          <p style="margin:0;">${nombresIntegrantes}</p>
+        </div>
+
+        <div>
+          <span class="label">Problema</span>
+          <p style="margin:0;white-space:pre-wrap;">${propuesta.problem_proposal || "—"}</p>
+        </div>
+
+        <div>
+          <span class="label">Justificación</span>
+          <p style="margin:0;white-space:pre-wrap;">${propuesta.justification_proposal || "—"}</p>
+        </div>
+
+        <div>
+          <span class="label">Objetivos</span>
+          <p style="margin:0;white-space:pre-wrap;">${propuesta.objectives_proposal || "—"}</p>
+        </div>
+
+        <div>
+          <span class="label">Solución propuesta</span>
+          <p style="margin:0;white-space:pre-wrap;">${propuesta.solution_proposal || "—"}</p>
+        </div>
+
+      </div>
 
       <!-- Enlace al PDF con nota de expiración -->
       <div id="mis-pdf-contenedor" class="mt-2"></div>
 
       ${puedeReenviar
         ? `<!-- Botón para desplegar el formulario -->
-           <button id="btn-abrir-reenvio" class="btn btn-primary mt-2"
+           <button id="btn-abrir-reenvio" class="btn btn-primary mt-3"
                    onclick="toggleFormularioReenvio(true)">
              ✏️ Editar y reenviar
            </button>
@@ -128,31 +193,31 @@ async function inicializarMiPropuesta() {
              <div class="col-12">
                <label for="re-categoria" class="form-label">Tipo de proyecto / Categoría</label>
                <select class="form-select" id="re-categoria">
-                 <option value="investigacion"  ${propuesta.categoria === 'investigacion'  ? 'selected' : ''}>Investigación</option>
-                 <option value="desarrollo"     ${propuesta.categoria === 'desarrollo'     ? 'selected' : ''}>Desarrollo tecnológico</option>
-                 <option value="social"         ${propuesta.categoria === 'social'         ? 'selected' : ''}>Proyección social</option>
-                 <option value="emprendimiento" ${propuesta.categoria === 'emprendimiento' ? 'selected' : ''}>Emprendimiento</option>
+                 <option value="investigacion"  ${propuesta.descr_proposal === 'investigacion'  ? 'selected' : ''}>Investigación</option>
+                 <option value="desarrollo"     ${propuesta.descr_proposal === 'desarrollo'     ? 'selected' : ''}>Desarrollo tecnológico</option>
+                 <option value="social"         ${propuesta.descr_proposal === 'social'         ? 'selected' : ''}>Proyección social</option>
+                 <option value="emprendimiento" ${propuesta.descr_proposal === 'emprendimiento' ? 'selected' : ''}>Emprendimiento</option>
                </select>
              </div>
 
              <div class="col-12">
                <label for="re-problema" class="form-label">Problema</label>
-               <textarea class="form-control" id="re-problema" rows="3">${propuesta.problema}</textarea>
+               <textarea class="form-control" id="re-problema" rows="3">${propuesta.problem_proposal}</textarea>
              </div>
 
              <div class="col-12">
                <label for="re-justificacion" class="form-label">Justificación</label>
-               <textarea class="form-control" id="re-justificacion" rows="3">${propuesta.justificacion}</textarea>
+               <textarea class="form-control" id="re-justificacion" rows="3">${propuesta.justification_proposal}</textarea>
              </div>
 
              <div class="col-12">
                <label for="re-objetivos" class="form-label">Objetivos</label>
-               <textarea class="form-control" id="re-objetivos" rows="3">${propuesta.objetivos}</textarea>
+               <textarea class="form-control" id="re-objetivos" rows="3">${propuesta.objectives_proposal}</textarea>
              </div>
 
              <div class="col-12">
                <label for="re-solucion" class="form-label">Solución propuesta</label>
-               <textarea class="form-control" id="re-solucion" rows="3">${propuesta.solucion}</textarea>
+               <textarea class="form-control" id="re-solucion" rows="3">${propuesta.solution_proposal}</textarea>
              </div>
 
              <div class="col-12">
@@ -211,9 +276,10 @@ async function manejarReenvio(evento, propuesta) {
   // Leer los integrantes marcados desde los checkboxes generados dinámicamente.
   const contenedorIntegrantes = document.getElementById("lista-integrantes-reenvio");
   const estudiantesDisponibles = JSON.parse(contenedorIntegrantes.dataset.estudiantes || "[]");
+  // Usar id_user (no .id) para identificar integrantes
   const integrantes = estudiantesDisponibles
-    .filter((e) => document.getElementById(`ri-${e.id}`)?.checked)
-    .map((e) => e.id);
+    .filter((e) => document.getElementById(`ri-${e.id_user}`)?.checked)
+    .map((e) => e.id_user);
 
   // ── Validaciones ───────────────────────────────────────────
   if (!titulo || !categoria || !problema || !justificacion || !objetivos || !solucion) {
@@ -240,16 +306,19 @@ async function manejarReenvio(evento, propuesta) {
 
   try {
     const fd = new FormData();
-    fd.append("titulo", titulo);
-    fd.append("categoria", categoria);
-    fd.append("problema", problema);
-    fd.append("justificacion", justificacion);
-    fd.append("objetivos", objetivos);
-    fd.append("solucion", solucion);
-    fd.append("integrantes", JSON.stringify(integrantes));
+    // Nombres de campo tal como los espera el BE
+    fd.append("title_proposal",           titulo);
+    fd.append("descr_proposal",           categoria);
+    fd.append("problem_proposal",         problema);
+    fd.append("justification_proposal",   justificacion);
+    fd.append("objectives_proposal",      objetivos);
+    fd.append("solution_proposal",        solucion);
+    fd.append("integrantes",              JSON.stringify(integrantes));
     fd.append("pdf", archivoPdf);
 
-    const res = await peticionApi(`/propuestas/${propuesta.id}`, { method: "PUT", body: fd });
+    // PATCH /propuestas/:id/reenviar (no PUT /propuestas/:id)
+    // Usar id_proposal (no .id) tal como lo devuelve el BE
+    const res = await peticionApi(`/propuestas/${propuesta.id_proposal}/reenviar`, { method: "PATCH", body: fd });
     const json = await res.json().catch(() => ({}));
 
     mostrarBanner(
@@ -258,7 +327,11 @@ async function manejarReenvio(evento, propuesta) {
       json.mensaje || (res.ok ? "Propuesta reenviada correctamente." : "No fue posible reenviar la propuesta.")
     );
 
-    if (res.ok) toggleFormularioReenvio(false);
+    if (res.ok) {
+      // Bug 4: re-renderizar la sección completa para reflejar el nuevo estado
+      // "Pendiente de validación" sin necesidad de cambiar de menú.
+      await inicializarMiPropuesta();
+    }
   } catch {
     mostrarBanner("banner-reenvio", "error", "No fue posible conectar con el servidor.");
   } finally {
