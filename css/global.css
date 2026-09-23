@@ -2,7 +2,7 @@
    GLOBAL.CSS — Sistema de diseño único del proyecto PGC.
    Se incluye en TODAS las páginas junto a Bootstrap 5.
    Aquí viven: paleta de color oficial UDEC (Manual de Imagen
-   ECOM 002 V.15), tipografía, y los bloques reutilizables
+   ECOM 002 V.19), tipografía, y los bloques reutilizables
    (topbar, sidebar, banners, chips, footer) para que cada
    vista nueva NO tenga que reescribir estos estilos: solo
    importa este archivo y usa las clases de abajo.
@@ -21,12 +21,6 @@
   --gris:            #4d4d4d;
   --blanco:          #FFFFFF;
   --bg-app:          #F4F6F4;
-
-  /* Colores por rol: se reutilizan en login, navbar y tablas */
-  --rol-estudiante:   var(--teal);
-  --rol-docente:      var(--naranja);
-  --rol-coordinador:  var(--oro);
-  --rol-jurado:       var(--verde-brillante);
 
   /* Sobrescritura de variables de Bootstrap 5 para que sus
      componentes (btn, form-control, nav, etc.) hereden la
@@ -103,7 +97,7 @@ a { text-decoration: none; }
 }
 
 /* ============================================================
-   TOPBAR — encabezado institucional (escudo ).
+   TOPBAR — encabezado institucional (imagotipo).
    Se inyecta vía components/navbar.js en un <div id="topbar">.
    No se reescribe en cada página: solo se declara aquí una vez.
    ============================================================ */
@@ -128,7 +122,6 @@ a { text-decoration: none; }
   color: #fff;
   font-size: .82rem;
 }
-.topbar .usuario-box .rol-chip { font-size: .68rem; padding: .25rem .6rem; }
 .topbar .btn-salir {
   background: transparent;
   border: 1px solid #ffffff40;
@@ -141,6 +134,57 @@ a { text-decoration: none; }
   transition: background .15s ease;
 }
 .topbar .btn-salir:hover { background: #ffffff1a; }
+
+/* ---- Selector de contexto (Profesor: Docente/Encargado/Jurado) ----
+   Chip fijo y deshabilitado cuando no hay capacidades extra. */
+.role-chip-deshabilitado {
+  opacity: .75;
+  cursor: default;
+}
+
+/* Cuando SÍ hay capacidades extra, el chip se vuelve un <details>
+   desplegable — sin JS adicional para abrir/cerrar el menú. */
+.selector-contexto {
+  position: relative;
+}
+.selector-contexto summary {
+  cursor: pointer;
+  list-style: none;
+}
+.selector-contexto summary::-webkit-details-marker {
+  display: none;
+}
+.selector-contexto[open] summary {
+  background: #ffffff26;
+}
+
+.menu-contexto {
+  position: absolute;
+  top: calc(100% + .4rem);
+  right: 0;
+  background: #fff;
+  border-radius: 9px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .18);
+  padding: .4rem;
+  min-width: 180px;
+  z-index: 20;
+}
+.opcion-contexto {
+  display: block;
+  padding: .55rem .75rem;
+  border-radius: 7px;
+  font-size: .82rem;
+  font-weight: 600;
+  color: var(--gris);
+}
+.opcion-contexto:hover {
+  background: #00482B0d;
+  color: var(--verde-udec);
+}
+.opcion-contexto.activa {
+  color: var(--verde-medio);
+  background: #007B3E14;
+}
 
 /* ============================================================
    APP SHELL — estructura de las páginas internas (todo lo que
@@ -183,7 +227,7 @@ a { text-decoration: none; }
 }
 
 /* ---- Footer institucional (obligatorio en toda pieza, según
-   el Manual de Imagen: logosímbolo/URL + Vigilada MinEducación) ---- */
+   el Manual de Imagen: imagotipo/URL + Vigilada MinEducación) ---- */
 footer.app-footer {
   background: var(--verde-udec);
   color: #EAF3EC;
@@ -192,6 +236,16 @@ footer.app-footer {
   text-align: center;
 }
 footer.app-footer strong { color: #fff; }
+
+.footer-contacto {
+  margin-top: .3rem;
+  opacity: .85;
+  font-size: .7rem;
+}
+.footer-contacto a {
+  color: #fff;
+  text-decoration: underline;
+}
 
 /* ============================================================
    BLOQUES REUTILIZABLES (banners, chips) — nacieron en el
@@ -239,5 +293,20 @@ footer.app-footer strong { color: #fff; }
   color: var(--verde-udec);
   background: #00482B0d;
 }
+
+/* ---- Insignia de estado de una propuesta (HU-08/HU-09) ----
+   Reutilizada en mis-propuestas.html y aprobaciones.html.
+   Colores funcionales de estado, no de identidad de marca. */
+.badge-estado {
+  display: inline-block;
+  padding: .35rem .8rem;
+  border-radius: 100px;
+  font-size: .78rem;
+  font-weight: 700;
+}
+.badge-estado.pendiente { background: var(--oro); color: #3a2d00; }
+.badge-estado.aprobada  { background: var(--verde-medio); color: #fff; }
+.badge-estado.rechazada { background: var(--rojo-error); color: #fff; }
+.badge-estado.anulada   { background: var(--gris); color: #fff; }
 
 .hidden { display: none !important; }

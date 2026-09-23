@@ -7,7 +7,7 @@
 .page-head h1 {
   font-size: clamp(1.4rem, 3vw, 1.9rem);
   font-weight: 800;
-  color: var(--verde-udec);
+  color: var(--verde-medio);
 }
 
 .card-resumen {
@@ -29,5 +29,5 @@
 .card-resumen .valor {
   font-size: 1.8rem;
   font-weight: 800;
-  color: var(--verde-udec);
+  color: var(--verde-medio);
 }

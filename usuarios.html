@@ -21,7 +21,7 @@
 
     <main class="main-content">
       <div class="page-head mb-4">
-        <h1 style="font-size:clamp(1.4rem,3vw,1.9rem);font-weight:800;color:var(--verde-udec);">Gestión de usuarios</h1>
+        <h1 style="font-size:clamp(1.4rem,3vw,1.9rem);font-weight:800;color:var(--verde-medio);">Gestión de usuarios</h1>
         <p class="text-muted">Listado, creación, edición y eliminación de usuarios del sistema.</p>
       </div>
 
@@ -38,7 +38,7 @@
   <script src="components/sidebar.js"></script>
   <script src="components/footer.js"></script>
   <script>
-    requerirAutenticacion();
+    requerirRol("coordinador"); 
     renderizarBarraSuperior("topbar");
     renderizarBarraLateral("sidebar", "usuarios");
     renderizarPiePagina("footer");
