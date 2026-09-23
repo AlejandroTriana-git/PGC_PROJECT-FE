@@ -10,6 +10,35 @@ const CLASE_POR_ESTADO = {
   "Anulada": "anulada",
 };
 
+/**
+ * Carga las categorías de proyecto desde la API y llena el select del
+ * formulario de reenvío, preseleccionando la categoría ya guardada.
+ * @param {string} categoriaActual - El descr_proposal guardado en la propuesta.
+ */
+async function pintarCategoriasReenvio(categoriaActual) {
+  const select = document.getElementById("re-categoria");
+  if (!select) return;
+
+  try {
+    const res = await peticionApi("/categorias");
+    const categorias = await res.json();
+
+    if (!res.ok || !Array.isArray(categorias) || categorias.length === 0) {
+      select.innerHTML = `<option value="" disabled selected>No se pudieron cargar las categorías</option>`;
+      return;
+    }
+
+    select.innerHTML = categorias
+      .map((c) => {
+        const seleccionado = c.name_category === categoriaActual ? 'selected' : '';
+        return `<option value="${c.name_category}" ${seleccionado}>${c.name_category}</option>`;
+      })
+      .join("");
+  } catch {
+    select.innerHTML = `<option value="" disabled selected>Error al cargar categorías</option>`;
+  }
+}
+
 /** Muestra u oculta el formulario de edición. */
 function toggleFormularioReenvio(visible) {
   const form = document.getElementById("form-reenvio");
@@ -193,10 +222,7 @@ async function inicializarMiPropuesta() {
              <div class="col-12">
                <label for="re-categoria" class="form-label">Tipo de proyecto / Categoría</label>
                <select class="form-select" id="re-categoria">
-                 <option value="investigacion"  ${propuesta.descr_proposal === 'investigacion'  ? 'selected' : ''}>Investigación</option>
-                 <option value="desarrollo"     ${propuesta.descr_proposal === 'desarrollo'     ? 'selected' : ''}>Desarrollo tecnológico</option>
-                 <option value="social"         ${propuesta.descr_proposal === 'social'         ? 'selected' : ''}>Proyección social</option>
-                 <option value="emprendimiento" ${propuesta.descr_proposal === 'emprendimiento' ? 'selected' : ''}>Emprendimiento</option>
+                 <option value="" disabled selected>Cargando categorías…</option>
                </select>
              </div>
 
@@ -251,9 +277,10 @@ async function inicializarMiPropuesta() {
     propuesta.pdf   // { url, "expira-en-segundos": 3600 }
   );
 
-  // Cargar integrantes y conectar el submit solo si aplica.
+  // Cargar integrantes, categorías y conectar el submit solo si aplica.
   if (puedeReenviar) {
     pintarIntegrantesReenvio(propuesta.integrantes || []);
+    pintarCategoriasReenvio(propuesta.descr_proposal || "");
     document.getElementById("form-reenvio").addEventListener("submit", (ev) =>
       manejarReenvio(ev, propuesta)
     );

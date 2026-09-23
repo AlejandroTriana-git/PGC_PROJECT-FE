@@ -6,6 +6,34 @@
 const TAMANO_MAXIMO_PDF_MB = 10;
 
 /**
+ * Carga las categorías de proyecto desde la API y llena el <select id="categoria">.
+ * El `value` de cada opción es el name_category, que es lo que se guarda
+ * en descr_proposal tal como espera el backend.
+ */
+async function pintarCategorias() {
+  const select = document.getElementById("categoria");
+  if (!select) return;
+
+  try {
+    const res = await peticionApi("/categorias");
+    const categorias = await res.json();
+
+    if (!res.ok || !Array.isArray(categorias) || categorias.length === 0) {
+      select.innerHTML = `<option value="" disabled selected>No se pudieron cargar las categorías</option>`;
+      return;
+    }
+
+    select.innerHTML =
+      `<option value="" disabled selected>Selecciona una opción</option>` +
+      categorias
+        .map((c) => `<option value="${c.name_category}">${c.name_category}</option>`)
+        .join("");
+  } catch {
+    select.innerHTML = `<option value="" disabled selected>Error al cargar categorías</option>`;
+  }
+}
+
+/**
  * Carga los estudiantes del mismo ciclo desde la API y pinta
  * los checkboxes de integrantes disponibles.
  */
@@ -81,6 +109,7 @@ async function inicializarRadicarPropuesta() {
     // Si falla la consulta previa, dejamos que el submit la maneje
   }
 
+  pintarCategorias();
   pintarIntegrantes();
 
   document.getElementById("form-propuesta").addEventListener("submit", async (evento) => {
