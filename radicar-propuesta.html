@@ -32,10 +32,16 @@
         </div>
 
         <div class="col-12">
-          <label for="categoria" class="form-label">Tipo de proyecto / Categoría</label>
-          <select class="form-select" id="categoria">
-            <option value="" disabled selected>Cargando categorías…</option>
-          </select>
+          <label class="form-label">Categorías del proyecto <span class="text-danger">*</span></label>
+          <div id="lista-categorias" class="border rounded p-3">
+            <span class="text-muted fst-italic" style="font-size:.82rem;">Cargando categorías…</span>
+          </div>
+          <div class="form-text">Selecciona una o más categorías que describan tu proyecto.</div>
+        </div>
+
+        <div class="col-12">
+          <label for="descripcion" class="form-label">Descripción general del proyecto</label>
+          <textarea class="form-control" id="descripcion" rows="3" placeholder="Escribe una descripción breve de tu proyecto..."></textarea>
         </div>
 
         <div class="col-12">

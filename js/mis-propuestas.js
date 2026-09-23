@@ -11,31 +11,42 @@ const CLASE_POR_ESTADO = {
 };
 
 /**
- * Carga las categorías de proyecto desde la API y llena el select del
- * formulario de reenvío, preseleccionando la categoría ya guardada.
- * @param {string} categoriaActual - El descr_proposal guardado en la propuesta.
+ * Carga las categorías desde la API y renderiza checkboxes en el formulario
+ * de reenvío, preseleccionando las que ya tiene la propuesta.
+ * @param {Array<{id_category:number}>} categoriasActuales - Categorías guardadas.
  */
-async function pintarCategoriasReenvio(categoriaActual) {
-  const select = document.getElementById("re-categoria");
-  if (!select) return;
+async function pintarCategoriasReenvio(categoriasActuales) {
+  const contenedor = document.getElementById("lista-categorias-reenvio");
+  if (!contenedor) return;
+
+  const idsActuales = (categoriasActuales || []).map((c) =>
+    typeof c === "object" ? c.id_category : Number(c)
+  );
 
   try {
     const res = await peticionApi("/categorias");
     const categorias = await res.json();
 
     if (!res.ok || !Array.isArray(categorias) || categorias.length === 0) {
-      select.innerHTML = `<option value="" disabled selected>No se pudieron cargar las categorías</option>`;
+      contenedor.innerHTML = `<p class="text-muted fst-italic" style="font-size:.82rem;">No se pudieron cargar las categorías.</p>`;
       return;
     }
 
-    select.innerHTML = categorias
+    contenedor.innerHTML = categorias
       .map((c) => {
-        const seleccionado = c.name_category === categoriaActual ? 'selected' : '';
-        return `<option value="${c.name_category}" ${seleccionado}>${c.name_category}</option>`;
+        const marcado = idsActuales.includes(c.id_category) ? "checked" : "";
+        return `
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox"
+                   value="${c.id_category}" id="rcat-${c.id_category}" ${marcado}>
+            <label class="form-check-label" for="rcat-${c.id_category}">${c.name_category}</label>
+          </div>`;
       })
       .join("");
+
+    contenedor.dataset.categorias = JSON.stringify(categorias);
   } catch {
-    select.innerHTML = `<option value="" disabled selected>Error al cargar categorías</option>`;
+    contenedor.innerHTML = `<p class="text-muted fst-italic" style="font-size:.82rem;">Error al cargar categorías.</p>`;
   }
 }
 
@@ -114,14 +125,12 @@ async function inicializarMiPropuesta() {
   const puedeReenviar = esLider && propuesta.estado === "Rechazada";
   const reenviosRestantes = 3 - (propuesta.resubmit_count || 0);
 
-  // Mapa legible de categoría
-  const CATEGORIAS = {
-    investigacion:  "Investigación",
-    desarrollo:     "Desarrollo tecnológico",
-    social:         "Proyección social",
-    emprendimiento: "Emprendimiento",
-  };
-  const categoriaTexto = CATEGORIAS[propuesta.descr_proposal] || propuesta.descr_proposal || "—";
+  // Badges de categorías desde el nuevo campo
+  const categoriasBadges = Array.isArray(propuesta.categorias) && propuesta.categorias.length > 0
+    ? propuesta.categorias
+        .map((c) => `<span class="badge bg-secondary me-1">${typeof c === "object" ? c.name_category : c}</span>`)
+        .join("")
+    : `<span class="text-muted">Sin categorías</span>`;
 
   // Nombres de integrantes: el BE ahora devuelve [{id_user, full_name}]
   const nombresIntegrantes = Array.isArray(propuesta.integrantes) && propuesta.integrantes.length > 0
@@ -154,8 +163,13 @@ async function inicializarMiPropuesta() {
       <div style="display:grid;gap:.75rem;margin-bottom:1rem;">
 
         <div>
-          <span class="label">Categoría / Tipo</span>
-          <p style="margin:0;">${categoriaTexto}</p>
+          <span class="label">Categorías</span>
+          <div style="margin:0;">${categoriasBadges}</div>
+        </div>
+
+        <div>
+          <span class="label">Descripción</span>
+          <p style="margin:0;white-space:pre-wrap;">${propuesta.descr_proposal || "—"}</p>
         </div>
 
         <div>
@@ -220,10 +234,16 @@ async function inicializarMiPropuesta() {
              </div>
 
              <div class="col-12">
-               <label for="re-categoria" class="form-label">Tipo de proyecto / Categoría</label>
-               <select class="form-select" id="re-categoria">
-                 <option value="" disabled selected>Cargando categorías…</option>
-               </select>
+               <label class="form-label">Categorías <span class="text-danger">*</span></label>
+               <div id="lista-categorias-reenvio" class="border rounded p-3">
+                 <span class="text-muted fst-italic" style="font-size:.82rem;">Cargando categorías…</span>
+               </div>
+               <div class="form-text">Selecciona una o más categorías.</div>
+             </div>
+
+             <div class="col-12">
+               <label for="re-descripcion" class="form-label">Descripción general</label>
+               <textarea class="form-control" id="re-descripcion" rows="2">${propuesta.descr_proposal || ""}</textarea>
              </div>
 
              <div class="col-12">
@@ -280,37 +300,48 @@ async function inicializarMiPropuesta() {
   // Cargar integrantes, categorías y conectar el submit solo si aplica.
   if (puedeReenviar) {
     pintarIntegrantesReenvio(propuesta.integrantes || []);
-    pintarCategoriasReenvio(propuesta.descr_proposal || "");
+    pintarCategoriasReenvio(propuesta.categorias || []);
     document.getElementById("form-reenvio").addEventListener("submit", (ev) =>
       manejarReenvio(ev, propuesta)
     );
   }
 }
 
-/** Valida y envía el formulario de reenvío contra PUT /propuestas/:id. */
+/** Valida y envía el formulario de reenvío contra PATCH /propuestas/:id/reenviar. */
 async function manejarReenvio(evento, propuesta) {
   evento.preventDefault();
   ocultarBanner("banner-reenvio");
 
   const titulo        = document.getElementById("re-titulo").value.trim();
-  const categoria     = document.getElementById("re-categoria").value;
+  const descripcion   = document.getElementById("re-descripcion").value.trim();
   const problema      = document.getElementById("re-problema").value.trim();
   const justificacion = document.getElementById("re-justificacion").value.trim();
   const objetivos     = document.getElementById("re-objetivos").value.trim();
   const solucion      = document.getElementById("re-solucion").value.trim();
   const archivoPdf    = document.getElementById("re-pdf").files[0];
 
+  // Leer categorías marcadas desde checkboxes
+  const contenedorCats = document.getElementById("lista-categorias-reenvio");
+  const todasLasCats   = JSON.parse(contenedorCats?.dataset.categorias || "[]");
+  const categorias     = todasLasCats
+    .filter((c) => document.getElementById(`rcat-${c.id_category}`)?.checked)
+    .map((c) => c.id_category);
+
   // Leer los integrantes marcados desde los checkboxes generados dinámicamente.
   const contenedorIntegrantes = document.getElementById("lista-integrantes-reenvio");
-  const estudiantesDisponibles = JSON.parse(contenedorIntegrantes.dataset.estudiantes || "[]");
-  // Usar id_user (no .id) para identificar integrantes
+  const estudiantesDisponibles = JSON.parse(contenedorIntegrantes?.dataset.estudiantes || "[]");
+  // Usar id_user para identificar integrantes
   const integrantes = estudiantesDisponibles
     .filter((e) => document.getElementById(`ri-${e.id_user}`)?.checked)
     .map((e) => e.id_user);
 
   // ── Validaciones ───────────────────────────────────────────
-  if (!titulo || !categoria || !problema || !justificacion || !objetivos || !solucion) {
+  if (!titulo || !descripcion || !problema || !justificacion || !objetivos || !solucion) {
     mostrarBanner("banner-reenvio", "error", "Debes completar todos los campos.");
+    return;
+  }
+  if (categorias.length === 0) {
+    mostrarBanner("banner-reenvio", "error", "Debes seleccionar al menos una categoría.");
     return;
   }
   if (!archivoPdf) {
@@ -335,16 +366,17 @@ async function manejarReenvio(evento, propuesta) {
     const fd = new FormData();
     // Nombres de campo tal como los espera el BE
     fd.append("title_proposal",           titulo);
-    fd.append("descr_proposal",           categoria);
+    fd.append("descr_proposal",           descripcion);
     fd.append("problem_proposal",         problema);
     fd.append("justification_proposal",   justificacion);
     fd.append("objectives_proposal",      objetivos);
     fd.append("solution_proposal",        solucion);
     fd.append("integrantes",              JSON.stringify(integrantes));
-    fd.append("pdf", archivoPdf);
+    fd.append("categorias",               JSON.stringify(categorias));
+    fd.append("pdf",                      archivoPdf);
 
-    // PATCH /propuestas/:id/reenviar (no PUT /propuestas/:id)
-    // Usar id_proposal (no .id) tal como lo devuelve el BE
+    // PATCH /propuestas/:id/reenviar
+    // Usar id_proposal tal como lo devuelve el BE
     const res = await peticionApi(`/propuestas/${propuesta.id_proposal}/reenviar`, { method: "PATCH", body: fd });
     const json = await res.json().catch(() => ({}));
 

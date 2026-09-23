@@ -38,6 +38,10 @@ async function abrirDetalle(id) {
 
   // Mapeo de campos del BE al detalle del modal
   document.getElementById("detalle-titulo").textContent          = propuestaSeleccionada.title_proposal;
+  document.getElementById("detalle-lider").textContent           = propuestaSeleccionada.leader_name || "—";
+  document.getElementById("detalle-integrantes").textContent     = propuestaSeleccionada.nombres_integrantes || "Solo el líder";
+  document.getElementById("detalle-categorias").textContent      = propuestaSeleccionada.categorias || "Sin categorías";
+  document.getElementById("detalle-descripcion").textContent     = propuestaSeleccionada.descr_proposal || "—";
   document.getElementById("detalle-problema").textContent        = propuestaSeleccionada.problem_proposal;
   document.getElementById("detalle-justificacion").textContent   = propuestaSeleccionada.justification_proposal;
   document.getElementById("detalle-objetivos").textContent       = propuestaSeleccionada.objectives_proposal;
