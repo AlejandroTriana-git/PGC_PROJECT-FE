@@ -22,6 +22,8 @@ const MENU_BASE_POR_ROL = {
     { id: "dashboard", label: "Inicio", href: "dashboard.html" },
     { id: "radicar-propuesta", label: "Radicar propuesta", href: "radicar-propuesta.html" },
     { id: "mis-propuestas", label: "Mi propuesta", href: "mis-propuestas.html" },
+    { id: "propuestaAprobada", label: "Propuestas aprobadas", href: "propuestaAprobada.html" },
+    { id: "miPgc", label: "Mi PGC", href: "miPgc.html" },
     { id: "perfil", label: "Mi perfil", href: "perfil.html" },
   ],
   coordinador: [
@@ -42,6 +44,7 @@ const MENU_POR_CONTEXTO = {
   ],
   encargado: [
     { id: "aprobaciones", label: "Aprobaciones", href: "aprobaciones.html" },
+    { id: "configurarFecha", label: "Configurar fechas", href: "configurarFecha.html" },
     { id: "perfil", label: "Mi perfil", href: "perfil.html" },
   ],
   jurado: [
