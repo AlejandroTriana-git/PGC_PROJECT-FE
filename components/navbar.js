@@ -104,7 +104,7 @@ function renderizarBarraSuperior(idContenedor) {
       ${
         usuario
           ? `<div class="usuario-box">
-              <span>${usuario.nombre || usuario.correo || "Usuario"}</span>
+              <span>${escaparHtml(usuario.nombre || usuario.correo || "Usuario")}</span>
               ${construirChipsUsuario(usuario)}
               <button class="btn-salir" onclick="cerrarSesion()">Cerrar sesión</button>
             </div>`

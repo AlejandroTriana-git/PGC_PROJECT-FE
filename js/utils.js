@@ -9,9 +9,25 @@ const ICONO_ERROR = '<svg class="ic" width="16" height="16" viewBox="0 0 24 24" 
 const ICONO_OK = '<svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>';
 
 /**
+ * Escapa un texto antes de meterlo dentro de un template que se asigna
+ * a innerHTML. Evita que un título como  Sistema "PGC" <b>  rompa un
+ * atributo (value="...") o inyecte HTML. Devuelve "" si llega null/undefined.
+ */
+function escaparHtml(texto) {
+  return String(texto ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/**
  * Muestra un mensaje de estado (éxito o error) dentro de un
  * contenedor <div id="banner"></div>. Se usa en login,
  * formularios de registro/edición, etc.
+ * El mensaje se inserta como TEXTO (no como HTML): puede venir de la
+ * URL (?msg=) o del backend y nunca debe interpretarse como código.
  * @param {string} idContenedor - id del elemento contenedor
  * @param {'success'|'error'} tipo
  * @param {string} mensaje
@@ -19,9 +35,11 @@ const ICONO_OK = '<svg class="ic" width="16" height="16" viewBox="0 0 24 24" fil
 function mostrarBanner(idContenedor, tipo, mensaje) {
   const banner = document.getElementById(idContenedor);
   if (!banner) return;
-  banner.classList.remove("hidden");
   banner.className = "banner " + tipo;
-  banner.innerHTML = (tipo === "error" ? ICONO_ERROR : ICONO_OK) + "<span>" + mensaje + "</span>";
+  banner.innerHTML = tipo === "error" ? ICONO_ERROR : ICONO_OK;
+  const texto = document.createElement("span");
+  texto.textContent = mensaje;
+  banner.appendChild(texto);
 }
 
 /** Oculta el banner de estado. */
@@ -76,14 +94,16 @@ async function peticionApi(ruta, opciones = {}) {
 }
 
 /**
- * Renderiza el bloque del enlace al PDF dentro de un elemento
+ * Renderiza el bloque del enlace a un archivo dentro de un elemento
  * contenedor. Muestra el link y una nota de expiración discreta.
  *
  * @param {HTMLElement} contenedor - Elemento donde se inyecta el HTML.
- * @param {{ url: string, "expira-en-segundos": number } | null | undefined} pdf
+ * @param {{ url: string, "expira-en-segundos"?: number, expira_en_segundos?: number } | null | undefined} pdf
  *   Objeto tal como lo devuelve el backend.
+ * @param {string} [etiqueta] - Texto del enlace. Se inserta como HTML: si
+ *   trae texto del usuario (ej. un nombre de archivo), escápalo antes.
  */
-function renderEnlacePdf(contenedor, pdf) {
+function renderEnlacePdf(contenedor, pdf, etiqueta = "📄 Ver documento PDF") {
   if (!contenedor) return;
 
   if (!pdf || !pdf.url) {
@@ -96,7 +116,7 @@ function renderEnlacePdf(contenedor, pdf) {
   if (segundos <= 0) {
     contenedor.innerHTML = `
       <span class="text-muted fst-italic" style="font-size:.82rem;">
-        El enlace del PDF ha expirado. Recarga la página para obtener uno nuevo.
+        El enlace ha expirado. Recarga la página para obtener uno nuevo.
       </span>`;
     return;
   }
@@ -107,10 +127,9 @@ function renderEnlacePdf(contenedor, pdf) {
     : `Disponible por ${minutos} min`;
 
   contenedor.innerHTML = `
-    <a href="${pdf.url}" target="_blank" rel="noopener"
+    <a href="${escaparHtml(pdf.url)}" target="_blank" rel="noopener"
        style="font-weight:600;color:var(--verde-medio);">
-      📄 Ver documento PDF
+      ${etiqueta}
     </a>
     <span class="text-muted ms-2" style="font-size:.75rem;">(${textoExpira})</span>`;
 }
-

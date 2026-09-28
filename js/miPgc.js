@@ -1,6 +1,10 @@
 // ============================================================
 // MIPGC.JS — HU-03: vista de solo lectura del PGC registrado
 // + carga y reemplazo de archivos de evidencia.
+//
+// Los archivos no llevan título propio: el backend guarda solo
+// storage_path (la ruta/nombre del archivo) y file_format, así que
+// el nombre visible sale del storage_path.
 // ============================================================
 
 const TAMANO_MAXIMO_ARCHIVO_MB = 10;
@@ -21,16 +25,22 @@ const TIPOS_PERMITIDOS = [
 // El PGC cargado, para no volver a pedirlo al subir/reemplazar cada archivo.
 let pgc_actual = null;
 
-/** Arma las etiquetas de categorías como texto simple. */
-function nombresCategoriasPgc(categorias) {
-  if (!Array.isArray(categorias) || categorias.length === 0) return "Sin categorías";
-  return categorias.map((c) => (typeof c === "object" ? c.name_category : c)).join(", ");
+/** Deja solo el nombre del archivo, sin las carpetas de la ruta de Storage. */
+function nombreDeArchivo(storage_path) {
+  if (!storage_path) return "Archivo sin nombre";
+  return storage_path.split("/").pop();
 }
 
-/** Arma los nombres de integrantes como texto simple. */
+/** Arma las categorías como texto simple (ya escapado). */
+function nombresCategoriasPgc(categorias) {
+  if (!Array.isArray(categorias) || categorias.length === 0) return "Sin categorías";
+  return categorias.map((c) => escaparHtml(typeof c === "object" ? c.name_category : c)).join(", ");
+}
+
+/** Arma los nombres de integrantes como texto simple (ya escapado). */
 function nombresIntegrantesPgc(integrantes) {
   if (!Array.isArray(integrantes) || integrantes.length === 0) return "Solo el líder";
-  return integrantes.map((i) => (typeof i === "object" ? i.full_name : i)).join(", ");
+  return integrantes.map((i) => escaparHtml(typeof i === "object" ? i.full_name : i)).join(", ");
 }
 
 /** Valida el archivo seleccionado: formato y tamaño máximo. */
@@ -47,10 +57,10 @@ function validarArchivoPgc(archivo) {
 }
 
 /**
- * Pinta la lista de archivos ya subidos. Cada uno trae, además del
- * link, un botón "Reemplazar" y un <input type="file"> oculto que
- * ese botón dispara — así no hace falta un modal ni tocar el HTML
- * de miPgc.html para esta función.
+ * Pinta la lista de archivos ya subidos. Cada fila muestra el nombre
+ * del archivo como enlace (con nota de expiración vía renderEnlacePdf),
+ * su formato como etiqueta, y un botón "Reemplazar" que dispara un
+ * <input type="file"> oculto.
  */
 function pintarArchivosPgc(archivos) {
   const contenedor = document.getElementById("lista-archivos-pgc");
@@ -65,24 +75,30 @@ function pintarArchivosPgc(archivos) {
       ${archivos
         .map(
           (archivo) => `
-        <li class="list-group-item d-flex justify-content-between align-items-center" id="fila-archivo-${archivo.id_file}">
+        <li class="list-group-item d-flex justify-content-between align-items-center" id="fila-archivo-${archivo.id_pgc_file}">
           <div>
-            <a href="${archivo.url_file}" target="_blank" rel="noopener" style="font-weight:600;color:var(--verde-medio);">
-              📎 ${archivo.title_file}
-            </a>
+            <div id="enlace-archivo-${archivo.id_pgc_file}"></div>
+            <span class="badge text-bg-light border mt-1">${escaparHtml((archivo.file_format || "").toUpperCase())}</span>
           </div>
           <div>
             <button type="button" class="btn btn-sm btn-outline-primary"
-                    onclick="document.getElementById('input-reemplazar-${archivo.id_file}').click()">
+                    onclick="document.getElementById('input-reemplazar-${archivo.id_pgc_file}').click()">
               Reemplazar
             </button>
-            <input type="file" class="d-none" id="input-reemplazar-${archivo.id_file}"
-                   onchange="reemplazarArchivoPgc(${archivo.id_file}, this.files[0])">
+            <input type="file" class="d-none" id="input-reemplazar-${archivo.id_pgc_file}"
+                   onchange="reemplazarArchivoPgc(${archivo.id_pgc_file}, this.files[0])">
           </div>
         </li>`
         )
         .join("")}
     </ul>`;
+
+  // renderEnlacePdf pinta DENTRO de un contenedor ya existente, por eso
+  // primero se arma el <ul> con los <div> vacíos y luego se llena cada uno.
+  archivos.forEach((archivo) => {
+    const etiqueta = `📎 ${escaparHtml(nombreDeArchivo(archivo.storage_path))}`;
+    renderEnlacePdf(document.getElementById(`enlace-archivo-${archivo.id_pgc_file}`), archivo.url_file, etiqueta);
+  });
 }
 
 /** Pinta la tarjeta completa: datos del PGC + sección de archivos. */
@@ -94,24 +110,24 @@ function pintarPgc() {
     <div class="card-resumen">
 
       <span class="label">Título</span>
-      <h2 style="font-size:1.2rem;font-weight:700;color:var(--verde-udec);">${p.title_proposal}</h2>
+      <h2 style="font-size:1.2rem;font-weight:700;color:var(--verde-udec);">${escaparHtml(p.title_proposal)}</h2>
 
       <div style="display:grid;gap:.75rem;margin:1rem 0;">
         <div>
           <span class="label">Problema</span>
-          <p style="margin:0;white-space:pre-wrap;">${p.problem_proposal}</p>
+          <p style="margin:0;white-space:pre-wrap;">${escaparHtml(p.problem_proposal)}</p>
         </div>
         <div>
           <span class="label">Justificación</span>
-          <p style="margin:0;white-space:pre-wrap;">${p.justification_proposal}</p>
+          <p style="margin:0;white-space:pre-wrap;">${escaparHtml(p.justification_proposal)}</p>
         </div>
         <div>
           <span class="label">Objetivos</span>
-          <p style="margin:0;white-space:pre-wrap;">${p.objectives_proposal}</p>
+          <p style="margin:0;white-space:pre-wrap;">${escaparHtml(p.objectives_proposal)}</p>
         </div>
         <div>
           <span class="label">Solución propuesta</span>
-          <p style="margin:0;white-space:pre-wrap;">${p.solution_proposal}</p>
+          <p style="margin:0;white-space:pre-wrap;">${escaparHtml(p.solution_proposal)}</p>
         </div>
         <div>
           <span class="label">Categorías</span>
@@ -132,15 +148,11 @@ function pintarPgc() {
       <div id="banner-archivo" class="banner hidden"></div>
 
       <form id="form-subir-archivo" class="row g-2 align-items-end" novalidate>
-        <div class="col-12 col-md-5">
-          <label for="titulo-archivo" class="form-label">Título del archivo</label>
-          <input type="text" class="form-control" id="titulo-archivo">
-        </div>
-        <div class="col-12 col-md-5">
-          <label for="archivo-pgc" class="form-label">Archivo</label>
+        <div class="col-12 col-md-9">
+          <label for="archivo-pgc" class="form-label">Nuevo archivo</label>
           <input type="file" class="form-control" id="archivo-pgc">
         </div>
-        <div class="col-12 col-md-2">
+        <div class="col-12 col-md-3">
           <button type="submit" class="btn btn-primary w-100" id="btn-subir-archivo">Subir archivo</button>
         </div>
         <div class="col-12">
@@ -156,18 +168,12 @@ function pintarPgc() {
   document.getElementById("form-subir-archivo").addEventListener("submit", subirArchivoPgc);
 }
 
-/** Envía el nuevo archivo a POST /pgc/:id/files. */
+/** Envía el nuevo archivo (solo el binario) a POST /pgc/:id/files. */
 async function subirArchivoPgc(evento) {
   evento.preventDefault();
   ocultarBanner("banner-archivo");
 
-  const titulo = document.getElementById("titulo-archivo").value.trim();
   const archivo = document.getElementById("archivo-pgc").files[0];
-
-  if (!titulo) {
-    mostrarBanner("banner-archivo", "error", "Debes asignarle un título al archivo.");
-    return;
-  }
 
   const error_archivo = validarArchivoPgc(archivo);
   if (error_archivo) {
@@ -181,7 +187,6 @@ async function subirArchivoPgc(evento) {
 
   try {
     const fd = new FormData();
-    fd.append("title_file", titulo);
     fd.append("archivo", archivo);
 
     const res = await peticionApi(`/pgc/${pgc_actual.id_pgc}/files`, { method: "POST", body: fd });
@@ -192,8 +197,8 @@ async function subirArchivoPgc(evento) {
       return;
     }
 
-    mostrarBanner("banner-archivo", "success", datos.mensaje || "Archivo subido correctamente.");
     await inicializarMiPgc();
+    mostrarBanner("banner-archivo", "success", datos.mensaje || "Archivo subido correctamente.");
   } catch {
     mostrarBanner("banner-archivo", "error", "No fue posible conectar con el servidor.");
   } finally {
@@ -206,7 +211,7 @@ async function subirArchivoPgc(evento) {
  * Reemplaza un archivo ya subido, vía PUT /pgc/:id/files/:idArchivo.
  * Se dispara desde el <input type="file"> oculto de pintarArchivosPgc.
  */
-async function reemplazarArchivoPgc(id_archivo, archivo) {
+async function reemplazarArchivoPgc(id_pgc_file, archivo) {
   ocultarBanner("banner-archivo");
 
   const error_archivo = validarArchivoPgc(archivo);
@@ -215,7 +220,7 @@ async function reemplazarArchivoPgc(id_archivo, archivo) {
     return;
   }
 
-  const fila = document.getElementById(`fila-archivo-${id_archivo}`);
+  const fila = document.getElementById(`fila-archivo-${id_pgc_file}`);
   const boton_fila = fila ? fila.querySelector("button") : null;
   if (boton_fila) {
     boton_fila.disabled = true;
@@ -226,7 +231,7 @@ async function reemplazarArchivoPgc(id_archivo, archivo) {
     const fd = new FormData();
     fd.append("archivo", archivo);
 
-    const res = await peticionApi(`/pgc/${pgc_actual.id_pgc}/files/${id_archivo}`, { method: "PUT", body: fd });
+    const res = await peticionApi(`/pgc/${pgc_actual.id_pgc}/files/${id_pgc_file}`, { method: "PUT", body: fd });
     const datos = await res.json().catch(() => ({}));
 
     if (!res.ok) {
@@ -238,8 +243,8 @@ async function reemplazarArchivoPgc(id_archivo, archivo) {
       return;
     }
 
-    mostrarBanner("banner-archivo", "success", datos.mensaje || "Archivo reemplazado correctamente.");
     await inicializarMiPgc();
+    mostrarBanner("banner-archivo", "success", datos.mensaje || "Archivo reemplazado correctamente.");
   } catch {
     mostrarBanner("banner-archivo", "error", "No fue posible conectar con el servidor.");
     if (boton_fila) {
