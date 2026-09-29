@@ -27,7 +27,7 @@ async function pintarCategorias() {
         <div class="form-check">
           <input class="form-check-input" type="checkbox"
                  value="${c.id_category}" id="cat-${c.id_category}">
-          <label class="form-check-label" for="cat-${c.id_category}">${c.name_category}</label>
+          <label class="form-check-label" for="cat-${c.id_category}">${escaparHtml(c.name_category)}</label>
         </div>`)
       .join("");
 
@@ -61,7 +61,7 @@ async function pintarIntegrantes() {
         (estudiante) => `
         <div class="form-check">
           <input class="form-check-input" type="checkbox" value="${estudiante.id_user}" id="integrante-${estudiante.id_user}">
-          <label class="form-check-label" for="integrante-${estudiante.id_user}">${estudiante.full_name}</label>
+          <label class="form-check-label" for="integrante-${estudiante.id_user}">${escaparHtml(estudiante.full_name)}</label>
         </div>`
       )
       .join("");
@@ -93,9 +93,16 @@ async function inicializarRadicarPropuesta() {
       const form = document.getElementById("form-propuesta");
       if (form) form.classList.add("hidden");
 
+      // Si la propuesta está Aprobada, redirigir directamente a "Mi propuesta"
+      // para que el estudiante pueda registrar su PGC desde ahí.
+      if (propuesta.estado === "Aprobada") {
+        sessionStorage.setItem("banner_info", "¡Tu propuesta ya fue aprobada! Aquí puedes ver su estado y registrar tu PGC.");
+        window.location.href = "mis-propuestas.html";
+        return;
+      }
+
       const estadoTextos = {
         "Pendiente de validación": "una propuesta pendiente de validación",
-        "Aprobada": "una propuesta aprobada",
         "Rechazada": "una propuesta rechazada (puedes editarla desde \"Mi propuesta\")",
         "Anulada": "una propuesta anulada",
       };
@@ -104,7 +111,8 @@ async function inicializarRadicarPropuesta() {
       mostrarBanner(
         "banner",
         "error",
-        `Ya tienes ${descripcion}. No puedes radicar una nueva propuesta. <a href="mis-propuestas.html" style="color:inherit;font-weight:700;">Ver mi propuesta →</a>`
+        `Ya tienes ${descripcion}. No puedes radicar una nueva propuesta.`,
+        { texto: "Ver mi propuesta →", href: "mis-propuestas.html" }
       );
       return; // No inicializar el formulario
     }
@@ -185,9 +193,12 @@ async function inicializarRadicarPropuesta() {
         mostrarBanner(
           "banner",
           "success",
-          `${json.mensaje || "Propuesta radicada correctamente."} <a href="mis-propuestas.html" style="color:inherit;font-weight:700;">Ver mi propuesta →</a>`
+          json.mensaje || "Propuesta radicada correctamente.",
+          { texto: "Ver mi propuesta →", href: "mis-propuestas.html" }
         );
       } else {
+        // Si la etapa "Radicación" está cerrada, el backend responde con el
+        // mensaje y las fechas ya escritas dentro del texto; se muestra tal cual.
         mostrarBanner(
           "banner",
           "error",

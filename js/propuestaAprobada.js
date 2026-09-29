@@ -35,7 +35,7 @@ function pintarPropuestasAprobadas() {
       (propuesta) => `
       <tr>
         <td>${escaparHtml(propuesta.title_proposal)}</td>
-        <td>${escaparHtml(propuesta.ciclo ?? propuesta.id_cycle ?? "—")}</td>
+        <td>${escaparHtml(propuesta.name_cycle ?? propuesta.id_cycle ?? "—")}</td>
         <td>${nombresCategorias(propuesta.categorias)}</td>
         <td class="text-end">
           <button class="btn btn-sm btn-primary" onclick="abrirRegistroPgc(${propuesta.id_proposal})">Registrar PGC</button>
@@ -145,8 +145,32 @@ async function confirmarRegistroPgc() {
 async function inicializarPropuestaAprobada() {
   modal_registro = new bootstrap.Modal(document.getElementById("modal-registro-pgc"));
 
+  // ── Verificar si el estudiante ya tiene un PGC registrado ──────────────
+  // Si ya tiene PGC no tiene sentido mostrar la opción de registrar uno nuevo.
   try {
-    const res = await peticionApi("/proposals/approved-without-pgc");
+    const resPgc = await peticionApi("/pgc/mine");
+    if (resPgc.ok) {
+      const pgcs = await resPgc.json();
+      if (Array.isArray(pgcs) && pgcs.length > 0) {
+        mostrarBanner(
+          "banner",
+          "success",
+          "Ya tienes un PGC registrado.",
+          { texto: "Ver mi PGC →", href: "miPgc.html" }
+        );
+        // Ocultar el contenedor de la tabla: no hay nada que mostrar aquí.
+        const contenedor = document.getElementById("contenedor-propuesta-aprobada");
+        if (contenedor) contenedor.classList.add("hidden");
+        return;
+      }
+    }
+  } catch {
+    // Si falla la consulta previa, seguimos el flujo normal
+  }
+
+  // ── Cargar propuestas aprobadas sin PGC ────────────────────────────────
+  try {
+    const res = await peticionApi("/propuestas/aprobadas-sin-pgc");
     if (!res.ok) throw new Error("Error al cargar propuestas aprobadas.");
     propuestas_aprobadas = await res.json();
   } catch {

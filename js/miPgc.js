@@ -70,36 +70,50 @@ function pintarArchivosPgc(archivos) {
     return;
   }
 
+  // El BE (mapearArchivoParaFrontend) devuelve:
+  //   { id_file, title_file, url_file: { url, expira_en_segundos } }
+  // storage_path, id_pgc_file y file_format nunca llegan al FE (decisión del equipo).
   contenedor.innerHTML = `
     <ul class="list-group">
       ${archivos
         .map(
           (archivo) => `
-        <li class="list-group-item d-flex justify-content-between align-items-center" id="fila-archivo-${archivo.id_pgc_file}">
+        <li class="list-group-item d-flex justify-content-between align-items-center" id="fila-archivo-${archivo.id_file}">
           <div>
-            <div id="enlace-archivo-${archivo.id_pgc_file}"></div>
-            <span class="badge text-bg-light border mt-1">${escaparHtml((archivo.file_format || "").toUpperCase())}</span>
+            <div id="enlace-archivo-${archivo.id_file}"></div>
+            <span class="badge text-bg-light border mt-1">${escaparHtml(((archivo.title_file || "").split(".").pop() || "ARCHIVO").toUpperCase())}</span>
           </div>
-          <div>
+          <div class="d-flex gap-2">
             <button type="button" class="btn btn-sm btn-outline-primary"
-                    onclick="document.getElementById('input-reemplazar-${archivo.id_pgc_file}').click()">
+                    onclick="document.getElementById('input-reemplazar-${archivo.id_file}').click()">
               Reemplazar
             </button>
-            <input type="file" class="d-none" id="input-reemplazar-${archivo.id_pgc_file}"
-                   onchange="reemplazarArchivoPgc(${archivo.id_pgc_file}, this.files[0])">
+            <input type="file" class="d-none" id="input-reemplazar-${archivo.id_file}"
+                   onchange="reemplazarArchivoPgc(${archivo.id_file}, this.files[0])">
+            <button type="button" class="btn btn-sm btn-outline-danger"
+                    onclick="eliminarArchivoPgc(${archivo.id_file})">
+              Eliminar
+            </button>
           </div>
         </li>`
         )
         .join("")}
     </ul>`;
 
-  // renderEnlacePdf pinta DENTRO de un contenedor ya existente, por eso
-  // primero se arma el <ul> con los <div> vacíos y luego se llena cada uno.
+  // url_file del BE es { url, expira_en_segundos }.
+  // renderEnlacePdf necesita AMBOS campos: url para el href y expira_en_segundos
+  // para calcular el tiempo disponible. Si solo pasamos { url } queda en 0 y
+  // muestra "El enlace ha expirado" en vez del link clicable.
   archivos.forEach((archivo) => {
-    const etiqueta = `📎 ${escaparHtml(nombreDeArchivo(archivo.storage_path))}`;
-    renderEnlacePdf(document.getElementById(`enlace-archivo-${archivo.id_pgc_file}`), archivo.url_file, etiqueta);
+    const etiqueta = `📎 ${escaparHtml(archivo.title_file || "Archivo")}`;
+    renderEnlacePdf(
+      document.getElementById(`enlace-archivo-${archivo.id_file}`),
+      archivo.url_file,   // pasar el objeto completo { url, expira_en_segundos }
+      etiqueta
+    );
   });
 }
+
 
 /** Pinta la tarjeta completa: datos del PGC + sección de archivos. */
 function pintarPgc() {
@@ -211,7 +225,7 @@ async function subirArchivoPgc(evento) {
  * Reemplaza un archivo ya subido, vía PUT /pgc/:id/files/:idArchivo.
  * Se dispara desde el <input type="file"> oculto de pintarArchivosPgc.
  */
-async function reemplazarArchivoPgc(id_pgc_file, archivo) {
+async function reemplazarArchivoPgc(id_file, archivo) {
   ocultarBanner("banner-archivo");
 
   const error_archivo = validarArchivoPgc(archivo);
@@ -220,7 +234,7 @@ async function reemplazarArchivoPgc(id_pgc_file, archivo) {
     return;
   }
 
-  const fila = document.getElementById(`fila-archivo-${id_pgc_file}`);
+  const fila = document.getElementById(`fila-archivo-${id_file}`);
   const boton_fila = fila ? fila.querySelector("button") : null;
   if (boton_fila) {
     boton_fila.disabled = true;
@@ -231,7 +245,7 @@ async function reemplazarArchivoPgc(id_pgc_file, archivo) {
     const fd = new FormData();
     fd.append("archivo", archivo);
 
-    const res = await peticionApi(`/pgc/${pgc_actual.id_pgc}/files/${id_pgc_file}`, { method: "PUT", body: fd });
+    const res = await peticionApi(`/pgc/${pgc_actual.id_pgc}/files/${id_file}`, { method: "PUT", body: fd });
     const datos = await res.json().catch(() => ({}));
 
     if (!res.ok) {
@@ -254,20 +268,70 @@ async function reemplazarArchivoPgc(id_pgc_file, archivo) {
   }
 }
 
+/**
+ * Elimina un archivo de evidencia vía DELETE /pgc/:id/files/:idArchivo.
+ * Pide confirmación antes de proceder.
+ */
+async function eliminarArchivoPgc(id_file) {
+  if (!confirm("¿Seguro que quieres eliminar este archivo? Esta acción no se puede deshacer.")) return;
+
+  // Deshabilitar todos los botones de esa fila mientras se procesa.
+  const fila = document.getElementById(`fila-archivo-${id_file}`);
+  const botones_fila = fila ? fila.querySelectorAll("button") : [];
+  botones_fila.forEach((b) => { b.disabled = true; });
+
+  try {
+    const res = await peticionApi(
+      `/pgc/${pgc_actual.id_pgc}/files/${id_file}`,
+      { method: "DELETE" }
+    );
+
+    // El controller responde 204 (sin body) en éxito.
+    if (!res.ok) {
+      const datos = await res.json().catch(() => ({}));
+      mostrarBanner("banner-archivo", "error", datos.mensaje || "No fue posible eliminar el archivo.");
+      botones_fila.forEach((b) => { b.disabled = false; });
+      return;
+    }
+
+    // Recargar toda la vista para reflejar el archivo eliminado.
+    await inicializarMiPgc();
+    mostrarBanner("banner-archivo", "success", "Archivo eliminado correctamente.");
+  } catch {
+    mostrarBanner("banner-archivo", "error", "No fue posible conectar con el servidor.");
+    botones_fila.forEach((b) => { b.disabled = false; });
+  }
+}
+
+
 async function inicializarMiPgc() {
   const contenedor = document.getElementById("contenedor-pgc");
 
   try {
-    const res = await peticionApi("/pgc/mio");
-    if (res.status === 404) {
+    const res = await peticionApi("/pgc/mine");
+    if (!res.ok) throw new Error("Error al cargar el PGC.");
+    const lista = await res.json();
+
+    // El BE devuelve un array ordenado por registered_at DESC.
+    // Si está vacío, el estudiante todavía no tiene PGC registrado.
+    if (!Array.isArray(lista) || lista.length === 0) {
       contenedor.innerHTML = `<p class="text-muted fst-italic">Todavía no has registrado ningún PGC.</p>`;
       return;
     }
-    if (!res.ok) throw new Error("Error al cargar el PGC.");
-    pgc_actual = await res.json();
+
+    pgc_actual = lista[0]; // El más reciente
   } catch {
     contenedor.innerHTML = `<p class="text-muted fst-italic">No fue posible cargar tu PGC. Intenta recargar la página.</p>`;
     return;
+  }
+
+  // ── Cargar archivos de evidencia desde GET /pgc/:id/files ──────────────
+  // GET /pgc/mine no incluye los archivos: viven en una ruta separada.
+  try {
+    const resArchivos = await peticionApi(`/pgc/${pgc_actual.id_pgc}/files`);
+    pgc_actual.archivos = resArchivos.ok ? await resArchivos.json() : [];
+  } catch {
+    pgc_actual.archivos = [];
   }
 
   pintarPgc();
