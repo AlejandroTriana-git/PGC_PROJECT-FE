@@ -9,16 +9,16 @@ let propuestas_aprobadas = [];
 let propuesta_seleccionada = null;
 let modal_registro = null;
 
-/** Arma las etiquetas de categorías de una propuesta como texto simple. */
+/** Arma las categorías de una propuesta como texto simple (ya escapado). */
 function nombresCategorias(categorias) {
   if (!Array.isArray(categorias) || categorias.length === 0) return "Sin categorías";
-  return categorias.map((c) => (typeof c === "object" ? c.name_category : c)).join(", ");
+  return categorias.map((c) => escaparHtml(typeof c === "object" ? c.name_category : c)).join(", ");
 }
 
-/** Arma los nombres de integrantes de una propuesta como texto simple. */
+/** Arma los nombres de integrantes de una propuesta como texto simple (ya escapado). */
 function nombresIntegrantes(integrantes) {
   if (!Array.isArray(integrantes) || integrantes.length === 0) return "Solo el líder";
-  return integrantes.map((i) => (typeof i === "object" ? i.full_name : i)).join(", ");
+  return integrantes.map((i) => escaparHtml(typeof i === "object" ? i.full_name : i)).join(", ");
 }
 
 /** Pinta la tabla de propuestas aprobadas pendientes de registro. */
@@ -34,8 +34,8 @@ function pintarPropuestasAprobadas() {
     .map(
       (propuesta) => `
       <tr>
-        <td>${propuesta.title_proposal}</td>
-        <td>${propuesta.ciclo ?? propuesta.id_cycle ?? "—"}</td>
+        <td>${escaparHtml(propuesta.title_proposal)}</td>
+        <td>${escaparHtml(propuesta.name_cycle ?? propuesta.id_cycle ?? "—")}</td>
         <td>${nombresCategorias(propuesta.categorias)}</td>
         <td class="text-end">
           <button class="btn btn-sm btn-primary" onclick="abrirRegistroPgc(${propuesta.id_proposal})">Registrar PGC</button>
@@ -74,23 +74,23 @@ function abrirRegistroPgc(id_proposal) {
     <div style="display:grid;gap:.75rem;">
       <div>
         <span class="label">Título</span>
-        <p style="margin:0;font-weight:700;">${p.title_proposal}</p>
+        <p style="margin:0;font-weight:700;">${escaparHtml(p.title_proposal)}</p>
       </div>
       <div>
         <span class="label">Problema</span>
-        <p style="margin:0;white-space:pre-wrap;">${p.problem_proposal}</p>
+        <p style="margin:0;white-space:pre-wrap;">${escaparHtml(p.problem_proposal)}</p>
       </div>
       <div>
         <span class="label">Justificación</span>
-        <p style="margin:0;white-space:pre-wrap;">${p.justification_proposal}</p>
+        <p style="margin:0;white-space:pre-wrap;">${escaparHtml(p.justification_proposal)}</p>
       </div>
       <div>
         <span class="label">Objetivos</span>
-        <p style="margin:0;white-space:pre-wrap;">${p.objectives_proposal}</p>
+        <p style="margin:0;white-space:pre-wrap;">${escaparHtml(p.objectives_proposal)}</p>
       </div>
       <div>
         <span class="label">Solución propuesta</span>
-        <p style="margin:0;white-space:pre-wrap;">${p.solution_proposal}</p>
+        <p style="margin:0;white-space:pre-wrap;">${escaparHtml(p.solution_proposal)}</p>
       </div>
       <div>
         <span class="label">Categorías</span>
@@ -123,8 +123,8 @@ async function confirmarRegistroPgc() {
     const datos = await res.json().catch(() => ({}));
 
     if (!res.ok) {
-      // Caso "fuera de fecha": se espera que el backend devuelva el
-      // rango habilitado junto con el mensaje, para mostrarlo completo.
+      // Caso "fuera de fecha": el backend devuelve el rango habilitado
+      // junto con el mensaje, para mostrarlo completo.
       const rango = datos.fecha_inicio_registro_pgc && datos.fecha_fin_registro_pgc
         ? ` (habilitado del ${datos.fecha_inicio_registro_pgc} al ${datos.fecha_fin_registro_pgc})`
         : "";
@@ -132,7 +132,7 @@ async function confirmarRegistroPgc() {
       return;
     }
 
-    // Registro exitoso: se va directo a "Mi PGC" (Issue 3).
+    // Registro exitoso: se va directo a "Mi PGC".
     window.location.href = "miPgc.html";
   } catch {
     mostrarBanner("banner-modal-registro", "error", "No fue posible conectar con el servidor.");
@@ -145,8 +145,32 @@ async function confirmarRegistroPgc() {
 async function inicializarPropuestaAprobada() {
   modal_registro = new bootstrap.Modal(document.getElementById("modal-registro-pgc"));
 
+  // ── Verificar si el estudiante ya tiene un PGC registrado ──────────────
+  // Si ya tiene PGC no tiene sentido mostrar la opción de registrar uno nuevo.
   try {
-    const res = await peticionApi("/proposals/approved-without-pgc");
+    const resPgc = await peticionApi("/pgc/mine");
+    if (resPgc.ok) {
+      const pgcs = await resPgc.json();
+      if (Array.isArray(pgcs) && pgcs.length > 0) {
+        mostrarBanner(
+          "banner",
+          "success",
+          "Ya tienes un PGC registrado.",
+          { texto: "Ver mi PGC →", href: "miPgc.html" }
+        );
+        // Ocultar el contenedor de la tabla: no hay nada que mostrar aquí.
+        const contenedor = document.getElementById("contenedor-propuesta-aprobada");
+        if (contenedor) contenedor.classList.add("hidden");
+        return;
+      }
+    }
+  } catch {
+    // Si falla la consulta previa, seguimos el flujo normal
+  }
+
+  // ── Cargar propuestas aprobadas sin PGC ────────────────────────────────
+  try {
+    const res = await peticionApi("/propuestas/aprobadas-sin-pgc");
     if (!res.ok) throw new Error("Error al cargar propuestas aprobadas.");
     propuestas_aprobadas = await res.json();
   } catch {

@@ -30,6 +30,7 @@
             <tr>
               <th>Ciclo</th>
               <th>Radicación</th>
+              <th></th>
               <th>Registro PGC</th>
               <th></th>
             </tr>
@@ -42,36 +43,24 @@
 
   <div id="footer"></div>
 
-  <!-- Modal de edición de fechas -->
+  <!-- Modal reutilizable: se adapta a la etapa seleccionada (Radicación o Registro PGC) -->
   <div class="modal fade" id="modal-fechas" tabindex="-1">
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
+          <!-- El título muestra "Ciclo X — Radicación" o "Ciclo X — Registro PGC" -->
           <h5 class="modal-title" id="fechas-titulo"></h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
-          <p class="text-muted" style="font-size:.8rem;">Radicación de propuestas</p>
-          <div class="row g-2 mb-3">
-            <div class="col-6">
-              <label for="input-inicio-radicacion" class="form-label">Inicio</label>
-              <input type="date" class="form-control" id="input-inicio-radicacion">
-            </div>
-            <div class="col-6">
-              <label for="input-fin-radicacion" class="form-label">Fin</label>
-              <input type="date" class="form-control" id="input-fin-radicacion">
-            </div>
-          </div>
-
-          <p class="text-muted" style="font-size:.8rem;">Registro de PGC</p>
           <div class="row g-2">
             <div class="col-6">
-              <label for="input-inicio-registro" class="form-label">Inicio</label>
-              <input type="date" class="form-control" id="input-inicio-registro">
+              <label for="input-fecha-inicio" class="form-label">Fecha de inicio</label>
+              <input type="date" class="form-control" id="input-fecha-inicio">
             </div>
             <div class="col-6">
-              <label for="input-fin-registro" class="form-label">Fin</label>
-              <input type="date" class="form-control" id="input-fin-registro">
+              <label for="input-fecha-fin" class="form-label">Fecha de fin</label>
+              <input type="date" class="form-control" id="input-fecha-fin">
             </div>
           </div>
 
