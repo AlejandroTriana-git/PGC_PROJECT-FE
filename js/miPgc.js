@@ -1,10 +1,10 @@
 // ============================================================
 // MIPGC.JS — HU-03: vista de solo lectura del PGC registrado
-// + carga y reemplazo de archivos de evidencia.
+// + carga, reemplazo y eliminación de archivos de evidencia.
 //
-// Los archivos no llevan título propio: el backend guarda solo
-// storage_path (la ruta/nombre del archivo) y file_format, así que
-// el nombre visible sale del storage_path.
+// Cada archivo lleva un título y una descripción obligatorios que
+// escribe el estudiante (title_file, desc_file en pgc_files).
+// Tanto al subir como al reemplazar se piden los dos campos.
 // ============================================================
 
 const TAMANO_MAXIMO_ARCHIVO_MB = 10;
@@ -24,12 +24,6 @@ const TIPOS_PERMITIDOS = [
 
 // El PGC cargado, para no volver a pedirlo al subir/reemplazar cada archivo.
 let pgc_actual = null;
-
-/** Deja solo el nombre del archivo, sin las carpetas de la ruta de Storage. */
-function nombreDeArchivo(storage_path) {
-  if (!storage_path) return "Archivo sin nombre";
-  return storage_path.split("/").pop();
-}
 
 /** Arma las categorías como texto simple (ya escapado). */
 function nombresCategoriasPgc(categorias) {
@@ -56,11 +50,32 @@ function validarArchivoPgc(archivo) {
   return null;
 }
 
+/** Muestra u oculta el mini-formulario de reemplazo de una fila. */
+function toggleFormularioReemplazo(id_file, visible) {
+  const form = document.getElementById(`form-reemplazo-${id_file}`);
+  const boton = document.getElementById(`btn-reemplazar-${id_file}`);
+  if (!form || !boton) return;
+  form.classList.toggle("hidden", !visible);
+  boton.classList.toggle("hidden", visible);
+}
+
+/** Muestra u oculta la descripción de un archivo. */
+function toggleDescripcionArchivo(id_file) {
+  const parrafo = document.getElementById(`descripcion-archivo-${id_file}`);
+  const boton = document.getElementById(`btn-ver-descripcion-${id_file}`);
+  if (!parrafo || !boton) return;
+  const visible = !parrafo.classList.contains("hidden");
+  parrafo.classList.toggle("hidden", visible);
+  boton.textContent = visible ? "Ver descripción ▾" : "Ocultar descripción ▴";
+}
+
 /**
- * Pinta la lista de archivos ya subidos. Cada fila muestra el nombre
- * del archivo como enlace (con nota de expiración vía renderEnlacePdf),
- * su formato como etiqueta, y un botón "Reemplazar" que dispara un
- * <input type="file"> oculto.
+ * Pinta la lista de archivos ya subidos. Cada fila muestra el título
+ * (siempre visible, como enlace con nota de expiración vía
+ * renderEnlacePdf), un botón para desplegar la descripción, y
+ * botones "Reemplazar"/"Eliminar". "Reemplazar" abre un mini-formulario
+ * en línea con título, descripción y archivo — prellenado con los
+ * valores actuales — en vez de pedir solo el binario.
  */
 function pintarArchivosPgc(archivos) {
   const contenedor = document.getElementById("lista-archivos-pgc");
@@ -71,30 +86,54 @@ function pintarArchivosPgc(archivos) {
   }
 
   // El BE (mapearArchivoParaFrontend) devuelve:
-  //   { id_file, title_file, url_file: { url, expira_en_segundos } }
-  // storage_path, id_pgc_file y file_format nunca llegan al FE (decisión del equipo).
+  //   { id_file, title_file, desc_file, url_file: { url, expira_en_segundos } }
   contenedor.innerHTML = `
     <ul class="list-group">
       ${archivos
         .map(
           (archivo) => `
-        <li class="list-group-item d-flex justify-content-between align-items-center" id="fila-archivo-${archivo.id_file}">
-          <div>
-            <div id="enlace-archivo-${archivo.id_file}"></div>
-            <span class="badge text-bg-light border mt-1">${escaparHtml(((archivo.title_file || "").split(".").pop() || "ARCHIVO").toUpperCase())}</span>
+        <li class="list-group-item" id="fila-archivo-${archivo.id_file}">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <div id="enlace-archivo-${archivo.id_file}"></div>
+              <button type="button" class="btn btn-link btn-sm p-0" id="btn-ver-descripcion-${archivo.id_file}"
+                      onclick="toggleDescripcionArchivo(${archivo.id_file})" style="font-size:.78rem;">
+                Ver descripción ▾
+              </button>
+              <p class="text-muted mb-0 mt-1 hidden" id="descripcion-archivo-${archivo.id_file}" style="font-size:.78rem;">
+                ${escaparHtml(archivo.desc_file)}
+              </p>
+            </div>
+            <div class="d-flex gap-2">
+              <button type="button" class="btn btn-sm btn-outline-primary" id="btn-reemplazar-${archivo.id_file}"
+                      onclick="toggleFormularioReemplazo(${archivo.id_file}, true)">
+                Reemplazar
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-danger"
+                      onclick="eliminarArchivoPgc(${archivo.id_file})">
+                Eliminar
+              </button>
+            </div>
           </div>
-          <div class="d-flex gap-2">
-            <button type="button" class="btn btn-sm btn-outline-primary"
-                    onclick="document.getElementById('input-reemplazar-${archivo.id_file}').click()">
-              Reemplazar
-            </button>
-            <input type="file" class="d-none" id="input-reemplazar-${archivo.id_file}"
-                   onchange="reemplazarArchivoPgc(${archivo.id_file}, this.files[0])">
-            <button type="button" class="btn btn-sm btn-outline-danger"
-                    onclick="eliminarArchivoPgc(${archivo.id_file})">
-              Eliminar
-            </button>
-          </div>
+
+          <form id="form-reemplazo-${archivo.id_file}" class="row g-2 mt-2 hidden" onsubmit="return false;">
+            <div class="col-12 col-md-4">
+              <label for="titulo-reemplazo-${archivo.id_file}" class="form-label">Título</label>
+              <input type="text" class="form-control form-control-sm" id="titulo-reemplazo-${archivo.id_file}" value="${escaparHtml(archivo.title_file)}">
+            </div>
+            <div class="col-12 col-md-4">
+              <label for="descripcion-reemplazo-${archivo.id_file}" class="form-label">Descripción</label>
+              <input type="text" class="form-control form-control-sm" id="descripcion-reemplazo-${archivo.id_file}" value="${escaparHtml(archivo.desc_file)}">
+            </div>
+            <div class="col-12 col-md-4">
+              <label for="archivo-reemplazo-${archivo.id_file}" class="form-label">Nuevo archivo (opcional)</label>
+              <input type="file" class="form-control form-control-sm" id="archivo-reemplazo-${archivo.id_file}">
+            </div>
+            <div class="col-12 d-flex gap-2">
+              <button type="button" class="btn btn-sm btn-primary" onclick="reemplazarArchivoPgc(${archivo.id_file})">Guardar cambios</button>
+              <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleFormularioReemplazo(${archivo.id_file}, false)">Cancelar</button>
+            </div>
+          </form>
         </li>`
         )
         .join("")}
@@ -161,15 +200,21 @@ function pintarPgc() {
 
       <div id="banner-archivo" class="banner hidden"></div>
 
-      <form id="form-subir-archivo" class="row g-2 align-items-end" novalidate>
-        <div class="col-12 col-md-9">
-          <label for="archivo-pgc" class="form-label">Nuevo archivo</label>
-          <input type="file" class="form-control" id="archivo-pgc">
+      <form id="form-subir-archivo" class="row g-2" novalidate>
+        <div class="col-12 col-md-4">
+          <label for="titulo-archivo" class="form-label">Título</label>
+          <input type="text" class="form-control" id="titulo-archivo">
+        </div>
+        <div class="col-12 col-md-5">
+          <label for="descripcion-archivo" class="form-label">Descripción</label>
+          <input type="text" class="form-control" id="descripcion-archivo">
         </div>
         <div class="col-12 col-md-3">
-          <button type="submit" class="btn btn-primary w-100" id="btn-subir-archivo">Subir archivo</button>
+          <label for="archivo-pgc" class="form-label">Archivo</label>
+          <input type="file" class="form-control" id="archivo-pgc">
         </div>
         <div class="col-12">
+          <button type="submit" class="btn btn-primary" id="btn-subir-archivo">Subir archivo</button>
           <div class="form-text">PDF, Word, Excel, PowerPoint o imágenes — máximo 10 MB.</div>
         </div>
       </form>
@@ -182,12 +227,19 @@ function pintarPgc() {
   document.getElementById("form-subir-archivo").addEventListener("submit", subirArchivoPgc);
 }
 
-/** Envía el nuevo archivo (solo el binario) a POST /pgc/:id/files. */
+/** Envía el nuevo archivo (con título y descripción) a POST /pgc/:id/files. */
 async function subirArchivoPgc(evento) {
   evento.preventDefault();
   ocultarBanner("banner-archivo");
 
+  const titulo = document.getElementById("titulo-archivo").value.trim();
+  const descripcion = document.getElementById("descripcion-archivo").value.trim();
   const archivo = document.getElementById("archivo-pgc").files[0];
+
+  if (!titulo || !descripcion) {
+    mostrarBanner("banner-archivo", "error", "El título y la descripción son obligatorios.");
+    return;
+  }
 
   const error_archivo = validarArchivoPgc(archivo);
   if (error_archivo) {
@@ -201,6 +253,8 @@ async function subirArchivoPgc(evento) {
 
   try {
     const fd = new FormData();
+    fd.append("title_file", titulo);
+    fd.append("desc_file", descripcion);
     fd.append("archivo", archivo);
 
     const res = await peticionApi(`/pgc/${pgc_actual.id_pgc}/files`, { method: "POST", body: fd });
@@ -223,37 +277,47 @@ async function subirArchivoPgc(evento) {
 
 /**
  * Reemplaza un archivo ya subido, vía PUT /pgc/:id/files/:idArchivo.
- * Se dispara desde el <input type="file"> oculto de pintarArchivosPgc.
+ * Lee título, descripción y el nuevo binario del mini-formulario en
+ * línea que abre el botón "Reemplazar" (ver pintarArchivosPgc). El
+ * binario es opcional: si no se eligió uno nuevo, se actualiza solo
+ * el título/descripción y el archivo guardado se mantiene igual.
  */
-async function reemplazarArchivoPgc(id_file, archivo) {
+async function reemplazarArchivoPgc(id_file) {
   ocultarBanner("banner-archivo");
 
-  const error_archivo = validarArchivoPgc(archivo);
-  if (error_archivo) {
-    mostrarBanner("banner-archivo", "error", error_archivo);
+  const titulo = document.getElementById(`titulo-reemplazo-${id_file}`).value.trim();
+  const descripcion = document.getElementById(`descripcion-reemplazo-${id_file}`).value.trim();
+  const archivo = document.getElementById(`archivo-reemplazo-${id_file}`).files[0];
+
+  if (!titulo || !descripcion) {
+    mostrarBanner("banner-archivo", "error", "El título y la descripción son obligatorios.");
     return;
   }
 
-  const fila = document.getElementById(`fila-archivo-${id_file}`);
-  const boton_fila = fila ? fila.querySelector("button") : null;
-  if (boton_fila) {
-    boton_fila.disabled = true;
-    boton_fila.textContent = "Reemplazando...";
+  if (archivo) {
+    const error_archivo = validarArchivoPgc(archivo);
+    if (error_archivo) {
+      mostrarBanner("banner-archivo", "error", error_archivo);
+      return;
+    }
   }
+
+  const fila = document.getElementById(`fila-archivo-${id_file}`);
+  const botones_form = fila ? fila.querySelectorAll("form button") : [];
+  botones_form.forEach((b) => { b.disabled = true; });
 
   try {
     const fd = new FormData();
-    fd.append("archivo", archivo);
+    fd.append("title_file", titulo);
+    fd.append("desc_file", descripcion);
+    if (archivo) fd.append("archivo", archivo);
 
     const res = await peticionApi(`/pgc/${pgc_actual.id_pgc}/files/${id_file}`, { method: "PUT", body: fd });
     const datos = await res.json().catch(() => ({}));
 
     if (!res.ok) {
       mostrarBanner("banner-archivo", "error", datos.mensaje || "No fue posible reemplazar el archivo.");
-      if (boton_fila) {
-        boton_fila.disabled = false;
-        boton_fila.textContent = "Reemplazar";
-      }
+      botones_form.forEach((b) => { b.disabled = false; });
       return;
     }
 
@@ -261,10 +325,7 @@ async function reemplazarArchivoPgc(id_file, archivo) {
     mostrarBanner("banner-archivo", "success", datos.mensaje || "Archivo reemplazado correctamente.");
   } catch {
     mostrarBanner("banner-archivo", "error", "No fue posible conectar con el servidor.");
-    if (boton_fila) {
-      boton_fila.disabled = false;
-      boton_fila.textContent = "Reemplazar";
-    }
+    botones_form.forEach((b) => { b.disabled = false; });
   }
 }
 
@@ -275,7 +336,6 @@ async function reemplazarArchivoPgc(id_file, archivo) {
 async function eliminarArchivoPgc(id_file) {
   if (!confirm("¿Seguro que quieres eliminar este archivo? Esta acción no se puede deshacer.")) return;
 
-  // Deshabilitar todos los botones de esa fila mientras se procesa.
   const fila = document.getElementById(`fila-archivo-${id_file}`);
   const botones_fila = fila ? fila.querySelectorAll("button") : [];
   botones_fila.forEach((b) => { b.disabled = true; });
@@ -294,7 +354,6 @@ async function eliminarArchivoPgc(id_file) {
       return;
     }
 
-    // Recargar toda la vista para reflejar el archivo eliminado.
     await inicializarMiPgc();
     mostrarBanner("banner-archivo", "success", "Archivo eliminado correctamente.");
   } catch {

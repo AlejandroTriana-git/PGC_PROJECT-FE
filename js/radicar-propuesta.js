@@ -5,6 +5,16 @@
 
 const TAMANO_MAXIMO_PDF_MB = 10;
 
+// Nombre exacto del ENUM de stage en la base de datos — con tilde,
+// confirmado por backend (ver cycle_dates.stage).
+const ETAPA_RADICACION = "Radicación";
+
+/** Arma el texto "habilitado del X al Y" a partir de dos fechas, si existen. */
+function formatearRangoFechas(inicio, fin) {
+  if (!inicio || !fin) return "";
+  return ` (habilitado del ${inicio} al ${fin})`;
+}
+
 /**
  * Carga las categorías de proyecto desde la API y renderiza
  * checkboxes en #lista-categorias para selección múltiple.
@@ -82,6 +92,37 @@ function validarPdf(archivo) {
   return null;
 }
 
+/**
+ * Revisa si la etapa "Radicación" del ciclo del estudiante está
+ * abierta ahora mismo. Devuelve null si puede radicar, o el mensaje
+ * de bloqueo (con fechas) si no. Esto es un bloqueo REAL: si da
+ * bloqueado, el formulario ni siquiera se pinta — no es decorativo.
+ */
+async function obtenerBloqueoPorFecha() {
+  const usuario = obtenerUsuario();
+  if (!usuario || !usuario.id_cycle) return null; // sin id_cycle no se puede validar; se deja pasar
+
+  try {
+    const res = await peticionApi(`/ciclos/${usuario.id_cycle}/fechas`);
+    if (!res.ok) return null; // si falla la consulta, no bloqueamos por las dudas
+    const filas = await res.json();
+    const fila = (filas || []).find((f) => f.stage === ETAPA_RADICACION);
+
+    if (!fila) return "El periodo de radicación todavía no ha sido configurado para tu ciclo.";
+
+    const ahora = new Date();
+    const inicio = new Date(fila.start_date);
+    const fin = new Date(fila.end_date);
+
+    if (ahora < inicio || ahora > fin) {
+      return `El periodo para radicar propuestas no está disponible.${formatearRangoFechas(fila.start_date, fila.end_date)}`;
+    }
+    return null;
+  } catch {
+    return null; // si falla la consulta, no bloqueamos por las dudas; el submit lo validará igual
+  }
+}
+
 async function inicializarRadicarPropuesta() {
   // ── Bug 1: bloquear el formulario si el estudiante ya tiene una propuesta ──
   try {
@@ -117,9 +158,19 @@ async function inicializarRadicarPropuesta() {
       return; // No inicializar el formulario
     }
 
-    // Si es 404 no hay propuesta → flujo normal
+    // Si es 404 no hay propuesta → sigue al chequeo de fecha
   } catch {
     // Si falla la consulta previa, dejamos que el submit la maneje
+  }
+
+  // ── Bloqueo real por fecha: si la etapa "Radicación" está cerrada,
+  // el formulario ni se muestra (no es un candado solo visual) ──────
+  const motivoBloqueo = await obtenerBloqueoPorFecha();
+  if (motivoBloqueo) {
+    const form = document.getElementById("form-propuesta");
+    if (form) form.classList.add("hidden");
+    mostrarBanner("banner", "error", motivoBloqueo);
+    return;
   }
 
   pintarCategorias();
@@ -197,12 +248,14 @@ async function inicializarRadicarPropuesta() {
           { texto: "Ver mi propuesta →", href: "mis-propuestas.html" }
         );
       } else {
-        // Si la etapa "Radicación" está cerrada, el backend responde con el
-        // mensaje y las fechas ya escritas dentro del texto; se muestra tal cual.
+        // El BE manda las fechas por separado (fecha_inicio_radicacion /
+        // fecha_fin_radicacion), igual que en el registro de PGC — se arman
+        // aquí dentro del mensaje, en vez de asumir que ya vienen incluidas.
+        const rango = formatearRangoFechas(json.fecha_inicio_radicacion, json.fecha_fin_radicacion);
         mostrarBanner(
           "banner",
           "error",
-          json.mensaje || "No fue posible radicar la propuesta."
+          (json.mensaje || "No fue posible radicar la propuesta.") + rango
         );
       }
     } catch {

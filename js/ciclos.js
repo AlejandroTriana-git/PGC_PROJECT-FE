@@ -31,6 +31,7 @@ function pintarTablaCiclos() {
         <td>${(ciclo.jurados || []).map((j) => nombreProfesor(j.id_juror)).join(", ") || "Sin asignar"}</td>
         <td class="text-end">
           <button class="btn btn-sm btn-outline-primary" onclick="abrirEdicionCiclo(${ciclo.id_cycle})">Editar</button>
+          <a class="btn btn-sm btn-outline-secondary" href="lineamientos.html?ciclo=${ciclo.id_cycle}">Lineamientos</a>
         </td>
       </tr>`
     )

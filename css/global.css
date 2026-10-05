@@ -216,6 +216,11 @@ a { text-decoration: none; }
   align-items: center;
   gap: .55rem;
 }
+.sidebar .nav-link.bloqueado {
+  color: #DDEAE099;
+  cursor: not-allowed;
+  pointer-events: none;
+}
 .sidebar .nav-link.active,
 .sidebar .nav-link:hover {
   background: #ffffff1a;

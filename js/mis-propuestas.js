@@ -175,6 +175,13 @@ async function inicializarMiPropuesta(mensaje_exito) {
           : ""}
       </div>
 
+      ${propuesta.estado === "Aprobada" && propuesta.reviewer_name
+        ? `<p class="text-muted mt-1 mb-3" style="font-size:.8rem;">
+             Aprobada por <strong>${escaparHtml(propuesta.reviewer_name)}</strong>
+             ${propuesta.reviewed_at ? `el ${escaparHtml(new Date(propuesta.reviewed_at).toLocaleDateString("es-CO"))}` : ""}
+           </p>`
+        : ""}
+
       ${propuesta.estado === "Rechazada"
         ? `<div class="banner error" style="margin-top:.5rem;margin-bottom:1rem;">
              <span><strong>Motivo del rechazo:</strong> ${escaparHtml(propuesta.comentario)}</span>

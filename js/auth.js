@@ -8,18 +8,20 @@ const CLAVE_TOKEN = "pgc_token";
 const CLAVE_CONTEXTO = "pgc_contexto_activo";
 
 /**
- * Diccionario de traducción de roles: la BD y el frontend no usan
- * los mismos nombres (ej. la BD dice "Profesor", nosotros decimos
- * "docente"). Aquí se resuelve esa diferencia en un solo lugar.
+ * Diccionario de traducción de roles: normaliza el literal exacto
+ * que manda el backend a minúscula. Se mantiene como diccionario
+ * explícito (no un .toLowerCase() genérico) porque el backend ya
+ * ha cambiado el literal de este rol dos veces — así, si vuelve a
+ * cambiar, el ajuste sigue siendo una sola línea aquí.
  *
- * OJO: "Jurado" y "Encargado de Ciclo" ya NO son roles — son
- * capacidades por ciclo que trae un "Profesor" en los arreglos
- * encargado_de / jurado_de (ver obtenerUsuario más abajo).
+ * "Jurado" y "Encargado de Ciclo" no son roles — son capacidades
+ * por ciclo que trae un "Profesor" en los arreglos encargado_de /
+ * jurado_de (ver obtenerUsuario más abajo).
  */
 const TRADUCCION_ROLES = {
   "Estudiante": "estudiante",
-  "Profesor": "docente",
-  "Coordinador": "coordinador",
+  "Profesor": "profesor",
+  "Administrador": "administrador",
 };
 
 /** Guarda el JWT recibido del backend. */
@@ -39,13 +41,13 @@ function eliminarToken() {
 }
 
 /**
- * Devuelve el contexto activo del Profesor: "docente" (por
+ * Devuelve el contexto activo del Profesor: "profesor" (por
  * defecto), "encargado" o "jurado". Un Profesor siempre aterriza
- * en "docente" al iniciar sesión; solo cambia si usa el menú
+ * en "profesor" al iniciar sesión; solo cambia si usa el menú
  * desplegable del topbar (ver navbar.js).
  */
 function obtenerContextoActivo() {
-  return localStorage.getItem(CLAVE_CONTEXTO) || "docente";
+  return localStorage.getItem(CLAVE_CONTEXTO) || "profesor";
 }
 
 /** Guarda el contexto activo elegido desde el menú del topbar. */
@@ -174,7 +176,7 @@ function requerirCapacidad(capacidad) {
 /**
  * Bloquea el acceso a una página reservada a uno o varios roles
  * puntuales (ej. "administrador" para usuarios.html, o
- * ["docente", "administrador"] para reportes.html, que la ven
+ * ["profesor", "administrador"] para reportes.html, que la ven
  * ambos roles). Acepta un string o un arreglo. Reutiliza
  * requerirAutenticacion() y compara el rol ya traducido de
  * obtenerUsuario(). Si no coincide, lo devuelve a su dashboard.
