@@ -11,6 +11,14 @@ const CLASE_POR_ESTADO = {
 };
 
 /**
+ * Normaliza un nombre para compararlo sin depender de mayúsculas,
+ * tildes sueltas o espacios sobrantes.
+ */
+function normalizarNombre(nombre) {
+  return String(nombre ?? "").trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+/**
  * Carga las categorías desde la API y renderiza checkboxes en el formulario
  * de reenvío, preseleccionando las que ya tiene la propuesta.
  * @param {Array<{id_category:number}>} categoriasActuales - Categorías guardadas.
@@ -39,7 +47,7 @@ async function pintarCategoriasReenvio(categoriasActuales) {
           <div class="form-check">
             <input class="form-check-input" type="checkbox"
                    value="${c.id_category}" id="rcat-${c.id_category}" ${marcado}>
-            <label class="form-check-label" for="rcat-${c.id_category}">${c.name_category}</label>
+            <label class="form-check-label" for="rcat-${c.id_category}">${escaparHtml(c.name_category)}</label>
           </div>`;
       })
       .join("");
@@ -88,7 +96,7 @@ async function pintarIntegrantesReenvio(seleccionados) {
         return `
           <div class="form-check">
             <input class="form-check-input" type="checkbox" value="${e.id_user}" id="ri-${e.id_user}" ${marcado}>
-            <label class="form-check-label" for="ri-${e.id_user}">${e.full_name}</label>
+            <label class="form-check-label" for="ri-${e.id_user}">${escaparHtml(e.full_name)}</label>
           </div>`;
       })
       .join("");
@@ -100,7 +108,12 @@ async function pintarIntegrantesReenvio(seleccionados) {
   }
 }
 
-async function inicializarMiPropuesta() {
+/**
+ * Carga y pinta la propuesta del estudiante.
+ * @param {string} [mensaje_exito] - si se pasa, se muestra como banner de éxito
+ *   arriba de la tarjeta una vez repintada (se usa tras un reenvío correcto).
+ */
+async function inicializarMiPropuesta(mensaje_exito) {
   const usuario = obtenerUsuario();
   const contenedor = document.getElementById("contenedor-propuesta");
 
@@ -120,42 +133,58 @@ async function inicializarMiPropuesta() {
   }
 
   const claseEstado = CLASE_POR_ESTADO[propuesta.estado] || "pendiente";
-  // Usar id_leader (no id_lider) tal como lo devuelve el BE
-  const esLider = usuario && usuario.id === propuesta.id_leader;
+
+  // id_leader llega como id_student (tabla students), no como id_user, así
+  // que no se puede comparar con usuario.id del JWT. Se compara por nombre:
+  // el nombre del JWT contra leader_name. Se exige que no esté vacío para que
+  // dos nombres ausentes no cuenten como coincidencia.
+  const nombre_usuario = normalizarNombre(usuario && usuario.nombre);
+  const esLider = nombre_usuario !== "" && nombre_usuario === normalizarNombre(propuesta.leader_name);
+
   const puedeReenviar = esLider && propuesta.estado === "Rechazada";
   const reenviosRestantes = 3 - (propuesta.resubmit_count || 0);
 
   // Badges de categorías desde el nuevo campo
   const categoriasBadges = Array.isArray(propuesta.categorias) && propuesta.categorias.length > 0
     ? propuesta.categorias
-        .map((c) => `<span class="badge bg-secondary me-1">${typeof c === "object" ? c.name_category : c}</span>`)
+        .map((c) => `<span class="badge bg-secondary me-1">${escaparHtml(typeof c === "object" ? c.name_category : c)}</span>`)
         .join("")
     : `<span class="text-muted">Sin categorías</span>`;
 
   // Nombres de integrantes: el BE ahora devuelve [{id_user, full_name}]
   const nombresIntegrantes = Array.isArray(propuesta.integrantes) && propuesta.integrantes.length > 0
     ? propuesta.integrantes
-        .map((i) => (typeof i === "object" ? i.full_name : `#${i}`))
+        .map((i) => escaparHtml(typeof i === "object" ? i.full_name : `#${i}`))
         .join(", ")
     : "Solo el líder";
 
   contenedor.innerHTML = `
+    <!-- Banner de resultado general (por ejemplo, tras un reenvío correcto) -->
+    <div id="banner-propuesta" class="banner hidden"></div>
+
     <div class="card-resumen">
 
       <!-- Encabezado: título + estado -->
       <span class="label">Título</span>
-      <h2 style="font-size:1.2rem;font-weight:700;color:var(--verde-udec);">${propuesta.titulo}</h2>
+      <h2 style="font-size:1.2rem;font-weight:700;color:var(--verde-udec);">${escaparHtml(propuesta.titulo)}</h2>
 
       <div class="mt-2 mb-3">
-        <span class="badge-estado ${claseEstado}">${propuesta.estado}</span>
+        <span class="badge-estado ${claseEstado}">${escaparHtml(propuesta.estado)}</span>
         ${propuesta.resubmit_count > 0
           ? `<span class="text-muted ms-2" style="font-size:.8rem;">Reenvíos realizados: ${propuesta.resubmit_count} de 3</span>`
           : ""}
       </div>
 
+      ${propuesta.estado === "Aprobada" && propuesta.reviewer_name
+        ? `<p class="text-muted mt-1 mb-3" style="font-size:.8rem;">
+             Aprobada por <strong>${escaparHtml(propuesta.reviewer_name)}</strong>
+             ${propuesta.reviewed_at ? `el ${escaparHtml(new Date(propuesta.reviewed_at).toLocaleDateString("es-CO"))}` : ""}
+           </p>`
+        : ""}
+
       ${propuesta.estado === "Rechazada"
         ? `<div class="banner error" style="margin-top:.5rem;margin-bottom:1rem;">
-             <span><strong>Motivo del rechazo:</strong> ${propuesta.comentario}</span>
+             <span><strong>Motivo del rechazo:</strong> ${escaparHtml(propuesta.comentario)}</span>
            </div>`
         : ""}
 
@@ -169,12 +198,12 @@ async function inicializarMiPropuesta() {
 
         <div>
           <span class="label">Descripción</span>
-          <p style="margin:0;white-space:pre-wrap;">${propuesta.descr_proposal || "—"}</p>
+          <p style="margin:0;white-space:pre-wrap;">${escaparHtml(propuesta.descr_proposal) || "—"}</p>
         </div>
 
         <div>
           <span class="label">Líder</span>
-          <p style="margin:0;">${propuesta.leader_name || "—"}</p>
+          <p style="margin:0;">${escaparHtml(propuesta.leader_name) || "—"}</p>
         </div>
 
         <div>
@@ -184,22 +213,22 @@ async function inicializarMiPropuesta() {
 
         <div>
           <span class="label">Problema</span>
-          <p style="margin:0;white-space:pre-wrap;">${propuesta.problem_proposal || "—"}</p>
+          <p style="margin:0;white-space:pre-wrap;">${escaparHtml(propuesta.problem_proposal) || "—"}</p>
         </div>
 
         <div>
           <span class="label">Justificación</span>
-          <p style="margin:0;white-space:pre-wrap;">${propuesta.justification_proposal || "—"}</p>
+          <p style="margin:0;white-space:pre-wrap;">${escaparHtml(propuesta.justification_proposal) || "—"}</p>
         </div>
 
         <div>
           <span class="label">Objetivos</span>
-          <p style="margin:0;white-space:pre-wrap;">${propuesta.objectives_proposal || "—"}</p>
+          <p style="margin:0;white-space:pre-wrap;">${escaparHtml(propuesta.objectives_proposal) || "—"}</p>
         </div>
 
         <div>
           <span class="label">Solución propuesta</span>
-          <p style="margin:0;white-space:pre-wrap;">${propuesta.solution_proposal || "—"}</p>
+          <p style="margin:0;white-space:pre-wrap;">${escaparHtml(propuesta.solution_proposal) || "—"}</p>
         </div>
 
       </div>
@@ -230,7 +259,7 @@ async function inicializarMiPropuesta() {
              <div class="col-12">
                <label for="re-titulo" class="form-label">Título del proyecto</label>
                <input type="text" class="form-control" id="re-titulo"
-                      value="${propuesta.titulo}">
+                      value="${escaparHtml(propuesta.titulo)}">
              </div>
 
              <div class="col-12">
@@ -243,27 +272,27 @@ async function inicializarMiPropuesta() {
 
              <div class="col-12">
                <label for="re-descripcion" class="form-label">Descripción general</label>
-               <textarea class="form-control" id="re-descripcion" rows="2">${propuesta.descr_proposal || ""}</textarea>
+               <textarea class="form-control" id="re-descripcion" rows="2">${escaparHtml(propuesta.descr_proposal)}</textarea>
              </div>
 
              <div class="col-12">
                <label for="re-problema" class="form-label">Problema</label>
-               <textarea class="form-control" id="re-problema" rows="3">${propuesta.problem_proposal}</textarea>
+               <textarea class="form-control" id="re-problema" rows="3">${escaparHtml(propuesta.problem_proposal)}</textarea>
              </div>
 
              <div class="col-12">
                <label for="re-justificacion" class="form-label">Justificación</label>
-               <textarea class="form-control" id="re-justificacion" rows="3">${propuesta.justification_proposal}</textarea>
+               <textarea class="form-control" id="re-justificacion" rows="3">${escaparHtml(propuesta.justification_proposal)}</textarea>
              </div>
 
              <div class="col-12">
                <label for="re-objetivos" class="form-label">Objetivos</label>
-               <textarea class="form-control" id="re-objetivos" rows="3">${propuesta.objectives_proposal}</textarea>
+               <textarea class="form-control" id="re-objetivos" rows="3">${escaparHtml(propuesta.objectives_proposal)}</textarea>
              </div>
 
              <div class="col-12">
                <label for="re-solucion" class="form-label">Solución propuesta</label>
-               <textarea class="form-control" id="re-solucion" rows="3">${propuesta.solution_proposal}</textarea>
+               <textarea class="form-control" id="re-solucion" rows="3">${escaparHtml(propuesta.solution_proposal)}</textarea>
              </div>
 
              <div class="col-12">
@@ -296,6 +325,12 @@ async function inicializarMiPropuesta() {
     document.getElementById("mis-pdf-contenedor"),
     propuesta.pdf   // { url, "expira-en-segundos": 3600 }
   );
+
+  // Si venimos de un reenvío correcto, el mensaje se muestra DESPUÉS de
+  // repintar (antes se mostraba y el repintado lo borraba al instante).
+  if (mensaje_exito) {
+    mostrarBanner("banner-propuesta", "success", mensaje_exito);
+  }
 
   // Cargar integrantes, categorías y conectar el submit solo si aplica.
   if (puedeReenviar) {
@@ -380,17 +415,15 @@ async function manejarReenvio(evento, propuesta) {
     const res = await peticionApi(`/propuestas/${propuesta.id_proposal}/reenviar`, { method: "PATCH", body: fd });
     const json = await res.json().catch(() => ({}));
 
-    mostrarBanner(
-      "banner-reenvio",
-      res.ok ? "success" : "error",
-      json.mensaje || (res.ok ? "Propuesta reenviada correctamente." : "No fue posible reenviar la propuesta.")
-    );
-
-    if (res.ok) {
-      // Bug 4: re-renderizar la sección completa para reflejar el nuevo estado
-      // "Pendiente de validación" sin necesidad de cambiar de menú.
-      await inicializarMiPropuesta();
+    if (!res.ok) {
+      mostrarBanner("banner-reenvio", "error", json.mensaje || "No fue posible reenviar la propuesta.");
+      return;
     }
+
+    // Bug 4: re-renderizar la sección completa para reflejar el nuevo estado
+    // "Pendiente de validación" sin necesidad de cambiar de menú. El mensaje
+    // de éxito se pasa a inicializarMiPropuesta para que se muestre al final.
+    await inicializarMiPropuesta(json.mensaje || "Propuesta reenviada correctamente.");
   } catch {
     mostrarBanner("banner-reenvio", "error", "No fue posible conectar con el servidor.");
   } finally {

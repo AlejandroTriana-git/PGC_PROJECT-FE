@@ -11,7 +11,7 @@
 // archivo y se actualiza en todas las páginas a la vez.
 //
 // IMPORTANTE: Un Profesor puede tener varias capacidades a la
-// vez (docente + encargado + jurado), pero solo "usa" una a la
+// vez (profesor + encargado + jurado), pero solo "usa" una a la
 // vez — el "contexto activo" (ver auth.js). Aquí el topbar ya
 // no muestra todos los chips juntos: muestra un selector con el
 // contexto activo, que se puede cambiar si tiene más de uno.
@@ -20,13 +20,13 @@
 // Etiqueta fija para roles que no tienen capacidades extra.
 const ETIQUETA_BASE = {
   estudiante: "Estudiante",
-  coordinador: "Coordinador",
+  administrador: "Administrador",
 };
 
 // Los "sombreros" que puede tener un Profesor: su etiqueta y la
 // página a la que se va al elegirlo en el menú del topbar.
 const CONTEXTOS_PROFESOR = {
-  docente: { label: "Docente", home: "dashboard.html" },
+  profesor: { label: "Profesor", home: "dashboard.html" },
   encargado: { label: "Encargado de Ciclo", home: "aprobaciones.html" },
   jurado: { label: "Jurado", home: "evaluaciones.html" },
 };
@@ -49,11 +49,11 @@ function construirChipSimple(etiqueta) {
  * se vuelve un menú desplegable para cambiar entre ellos.
  */
 function construirSelectorContexto(usuario) {
-  const disponibles = ["docente"];
+  const disponibles = ["profesor"];
   if (usuario.encargado_de.length > 0) disponibles.push("encargado");
   if (usuario.jurado_de.length > 0) disponibles.push("jurado");
 
-  const activo = disponibles.includes(obtenerContextoActivo()) ? obtenerContextoActivo() : "docente";
+  const activo = disponibles.includes(obtenerContextoActivo()) ? obtenerContextoActivo() : "profesor";
   const etiquetaActiva = CONTEXTOS_PROFESOR[activo].label;
 
   if (disponibles.length === 1) {
@@ -83,7 +83,7 @@ function construirSelectorContexto(usuario) {
 
 /** Arma el chip o selector que le corresponde al usuario según su rol. */
 function construirChipsUsuario(usuario) {
-  if (usuario.rol === "docente") {
+  if (usuario.rol === "profesor") {
     return construirSelectorContexto(usuario);
   }
   const etiqueta = ETIQUETA_BASE[usuario.rol] || usuario.rol;
@@ -104,7 +104,7 @@ function renderizarBarraSuperior(idContenedor) {
       ${
         usuario
           ? `<div class="usuario-box">
-              <span>${usuario.nombre || usuario.correo || "Usuario"}</span>
+              <span>${escaparHtml(usuario.nombre || usuario.correo || "Usuario")}</span>
               ${construirChipsUsuario(usuario)}
               <button class="btn-salir" onclick="cerrarSesion()">Cerrar sesión</button>
             </div>`

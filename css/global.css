@@ -216,6 +216,17 @@ a { text-decoration: none; }
   align-items: center;
   gap: .55rem;
 }
+.sidebar .nav-link.bloqueado {
+  color: #DDEAE099;
+  cursor: not-allowed;
+  /* Sin pointer-events: none: el <span> no tiene href, así que no
+     navega igual, y así el hover sí muestra el tooltip del motivo. */
+}
+.sidebar .nav-link.bloqueado:hover,
+.sidebar .nav-link.bloqueado:focus {
+  background: #ffffff0d;
+  color: #DDEAE0CC;
+}
 .sidebar .nav-link.active,
 .sidebar .nav-link:hover {
   background: #ffffff1a;
@@ -310,3 +321,34 @@ footer.app-footer strong { color: #fff; }
 .badge-estado.anulada   { background: var(--gris); color: #fff; }
 
 .hidden { display: none !important; }
+
+/* ---- Tarjetas de detalle (propuesta, PGC, ficha, lineamientos) ----
+   Antes vivían solo en dashboard.css, que únicamente carga
+   dashboard.html: en el resto de páginas el subtítulo (.label) se
+   veía igual que el contenido. Ahora están aquí para todas. */
+.card-resumen {
+  background: #fff;
+  border-radius: var(--bs-border-radius-lg);
+  padding: 1.2rem 1.4rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .06);
+  display: flex;
+  flex-direction: column;
+  gap: .3rem;
+}
+
+/* Subtítulo de cada campo: negrita, arriba del valor. */
+.label {
+  display: block;
+  font-size: .78rem;
+  font-weight: 700;
+  color: var(--gris);
+  text-transform: uppercase;
+  letter-spacing: .02em;
+  margin-bottom: .15rem;
+}
+
+/* El contenido debajo del subtítulo va en peso normal. */
+.label + p,
+.label + div {
+  font-weight: 400;
+}
