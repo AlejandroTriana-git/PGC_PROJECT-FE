@@ -10,6 +10,14 @@
 // endpoint de subida es el MISMO para "actualizar uno existente" y
 // "agregar uno nuevo": lo único que cambia es si el formulario
 // llega con el título bloqueado (actualizar) o en blanco (nuevo).
+//
+// CICLO A MOSTRAR (ver resolverCiclosDisponibles):
+//   - Estudiante: su id_cycle (viene en el JWT).
+//   - Profesor: los ciclos de encargado_de + jurado_de.
+//   - Administrador: todos los ciclos de GET /ciclos.
+// Si viene ?ciclo= en la URL (desde ciclos.html) y es uno de los
+// disponibles, se usa ese. Si hay más de un ciclo posible se pinta
+// un selector arriba para cambiar de ciclo sin salir de la página.
 // ============================================================
 
 const TIPO_DOCUMENTO = "Lineamiento";
@@ -17,6 +25,47 @@ const TAMANO_MAXIMO_LINEAMIENTO_MB = 10;
 
 let id_cycle_actual = null;
 let documentos_vigentes = [];
+let ciclos_disponibles = []; // [{ id, nombre }]
+
+// Prefijo fijo de la versión: el usuario solo escribe el número y al
+// BE siempre se envía el texto completo (ej. "v2").
+const PREFIJO_VERSION = "v";
+
+/** Saca el número de un version_label ("v3", "V3", "3") → 3. Si no tiene número → 0. */
+function numeroDeVersion(version_label) {
+  const coincidencia = String(version_label || "").match(/\d+/);
+  return coincidencia ? Number(coincidencia[0]) : 0;
+}
+
+/** Arma el version_label que se envía al BE a partir del número (2 → "v2"). */
+function armarVersionLabel(numero) {
+  return `${PREFIJO_VERSION}${numero}`;
+}
+
+/**
+ * Lee el número escrito en un input de versión y lo valida.
+ * Devuelve { numero } si está bien o { error } si no.
+ * Si se pasa version_actual, el número debe ser mayor que esa versión.
+ */
+function leerNumeroVersion(id_input, version_actual = 0) {
+  const texto = document.getElementById(id_input).value.trim();
+  if (!/^[1-9]\d*$/.test(texto)) return { error: "La versión debe ser un número entero mayor a 0." };
+  const numero = Number(texto);
+  if (numero <= version_actual) {
+    return { error: `La nueva versión debe ser mayor a la actual (${armarVersionLabel(version_actual)}).` };
+  }
+  return { numero };
+}
+
+/** HTML del campo de versión: "v" fijo a la izquierda y solo el número editable. */
+function campoVersion(id_input, etiqueta, valor_inicial) {
+  return `
+    <label for="${id_input}" class="form-label">${etiqueta}</label>
+    <div class="input-group">
+      <span class="input-group-text">${PREFIJO_VERSION}</span>
+      <input type="number" class="form-control" id="${id_input}" min="1" step="1" inputmode="numeric" value="${valor_inicial}">
+    </div>`;
+}
 
 /** Valida que el archivo sea un PDF dentro del tamaño máximo. */
 function validarPdfLineamiento(archivo) {
@@ -66,8 +115,7 @@ function pintarFormularioAgregar() {
             <input type="text" class="form-control" id="descripcion-nuevo">
           </div>
           <div class="col-6 col-md-2">
-            <label for="version-nuevo" class="form-label">Versión</label>
-            <input type="text" class="form-control" id="version-nuevo" placeholder="V1">
+            ${campoVersion("version-nuevo", "Versión", 1)}
           </div>
           <div class="col-6 col-md-2">
             <label for="pdf-nuevo" class="form-label">PDF</label>
@@ -97,13 +145,18 @@ function pintarFormularioAgregar() {
 
     const titulo = document.getElementById("titulo-nuevo").value.trim();
     const descripcion = document.getElementById("descripcion-nuevo").value.trim();
-    const version = document.getElementById("version-nuevo").value.trim();
     const archivo = document.getElementById("pdf-nuevo").files[0];
 
-    if (!titulo || !version) {
-      mostrarBanner("banner", "error", "El título y la versión son obligatorios.");
+    if (!titulo) {
+      mostrarBanner("banner", "error", "El título es obligatorio.");
       return;
     }
+    const lectura_version = leerNumeroVersion("version-nuevo");
+    if (lectura_version.error) {
+      mostrarBanner("banner", "error", lectura_version.error);
+      return;
+    }
+    const version = armarVersionLabel(lectura_version.numero);
     const error_pdf = validarPdfLineamiento(archivo);
     if (error_pdf) {
       mostrarBanner("banner", "error", error_pdf);
@@ -149,17 +202,25 @@ function toggleFormularioActualizar(title_file_id, visible) {
  * viaja tal cual venía en el documento vigente — nunca se vuelve a
  * escribir, para no romper el amarre entre versiones.
  */
-async function actualizarDocumento(title_file_id, title_file_real) {
+async function actualizarDocumento(title_file_id, id_document) {
   ocultarBanner("banner");
 
+  // El título real se busca en los documentos ya cargados (no viaja
+  // por el onclick, así no se rompe con comillas, tildes o espacios).
+  const doc = documentos_vigentes.find((d) => d.id_document === id_document);
+  if (!doc) return;
+  const title_file_real = doc.title_file;
+
   const descripcion = document.getElementById(`descripcion-actualizar-${title_file_id}`).value.trim();
-  const version = document.getElementById(`version-actualizar-${title_file_id}`).value.trim();
   const archivo = document.getElementById(`pdf-actualizar-${title_file_id}`).files[0];
 
-  if (!version) {
-    mostrarBanner("banner", "error", "La versión es obligatoria.");
+  // La nueva versión tiene que ser mayor que la vigente (ej. vigente v2 → mínimo v3)
+  const lectura_version = leerNumeroVersion(`version-actualizar-${title_file_id}`, numeroDeVersion(doc.version_label));
+  if (lectura_version.error) {
+    mostrarBanner("banner", "error", lectura_version.error);
     return;
   }
+  const version = armarVersionLabel(lectura_version.numero);
   const error_pdf = validarPdfLineamiento(archivo);
   if (error_pdf) {
     mostrarBanner("banner", "error", error_pdf);
@@ -196,7 +257,13 @@ async function actualizarDocumento(title_file_id, title_file_real) {
  * El título va URL-encoded porque es texto libre (puede traer
  * espacios o tildes).
  */
-async function verHistorial(title_file_real) {
+async function verHistorial(id_document) {
+  // Se busca el título real del documento; se codifica UNA sola vez
+  // al armar la URL (antes se codificaba dos veces y el BE no lo encontraba).
+  const doc = documentos_vigentes.find((d) => d.id_document === id_document);
+  if (!doc) return;
+  const title_file_real = doc.title_file;
+
   document.getElementById("historial-titulo").textContent = `Historial — ${title_file_real}`;
   const cuerpo = document.getElementById("cuerpo-historial");
   cuerpo.innerHTML = `<p class="text-muted fst-italic">Cargando...</p>`;
@@ -216,9 +283,9 @@ async function verHistorial(title_file_real) {
       return;
     }
 
-    // uploaded_by llega como id de usuario, sin nombre — mismo patrón que
-    // id_leader en propuestas. Pendiente de confirmar con backend si lo
-    // traducen a un nombre; mientras tanto se muestra el id tal cual.
+    // uploaded_by ya llega como nombre (el BE hace JOIN con users).
+    // uploaded_at llega como "YYYY-MM-DD HH:mm:ss"; se cambia el espacio
+    // por "T" para que new Date() lo lea igual en todos los navegadores.
     cuerpo.innerHTML = `
         <ul class="list-group">
             ${historial
@@ -227,7 +294,7 @@ async function verHistorial(title_file_real) {
             <li class="list-group-item">
                 <strong>${escaparHtml(version.version_label)}</strong>
                 <span class="text-muted ms-2" style="font-size:.8rem;">
-                ${escaparHtml(new Date(version.uploaded_at).toLocaleDateString("es-CO"))} — subido por ${escaparHtml(version.uploaded_by)}
+                ${escaparHtml(new Date(String(version.uploaded_at).replace(" ", "T")).toLocaleDateString("es-CO"))} — subido por ${escaparHtml(version.uploaded_by)}
                 </span>
             </li>`
             )
@@ -262,7 +329,7 @@ function pintarDocumentos(usuario) {
             <div id="enlace-${id_fila}" class="mt-2"></div>
           </div>
           <div class="d-flex gap-2">
-            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="verHistorial('${encodeURIComponent(doc.title_file)}')">
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="verHistorial(${doc.id_document})">
               Ver historial
             </button>
             ${
@@ -288,8 +355,7 @@ function pintarDocumentos(usuario) {
                    <input type="text" class="form-control" id="descripcion-actualizar-${id_fila}" value="${escaparHtml(doc.desc_file || "")}">
                  </div>
                  <div class="col-6 col-md-2">
-                   <label for="version-actualizar-${id_fila}" class="form-label">Nueva versión</label>
-                   <input type="text" class="form-control" id="version-actualizar-${id_fila}" placeholder="V2">
+                   ${campoVersion(`version-actualizar-${id_fila}`, "Nueva versión", numeroDeVersion(doc.version_label) + 1)}
                  </div>
                  <div class="col-6 col-md-2">
                    <label for="pdf-actualizar-${id_fila}" class="form-label">PDF</label>
@@ -297,7 +363,7 @@ function pintarDocumentos(usuario) {
                  </div>
                  <div class="col-12 d-flex gap-2">
                    <button type="button" class="btn btn-sm btn-primary" id="btn-guardar-actualizar-${id_fila}"
-                           onclick="actualizarDocumento('${id_fila}', '${escaparHtml(doc.title_file).replace(/'/g, "\\'")}')">
+                           onclick="actualizarDocumento('${id_fila}', ${doc.id_document})">
                      Guardar nueva versión
                    </button>
                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleFormularioActualizar('${id_fila}', false)">
@@ -312,6 +378,7 @@ function pintarDocumentos(usuario) {
     .join("");
 
   // El propio objeto "doc" ya trae { url, expira_en_segundos } sueltos
+  // (mismo nombre con guion bajo que usa el BE en todos los endpoints)
   // (no anidados en un url_file aparte) — se le pasa tal cual a renderEnlacePdf,
   // que solo lee esas dos propiedades e ignora el resto.
   documentos_vigentes.forEach((doc) => {
@@ -329,7 +396,8 @@ async function cargarDocumentos() {
   try {
     const res = await peticionApi(`/ciclos/${id_cycle_actual}/documentos?tipo=${TIPO_DOCUMENTO}`);
     if (!res.ok) throw new Error();
-    documentos_vigentes = await res.json(); // siempre una lista, nunca null
+    const datos = await res.json();
+    documentos_vigentes = Array.isArray(datos) ? datos : [];
   } catch {
     document.getElementById("contenedor-lineamientos").innerHTML =
       `<p class="text-muted fst-italic">No fue posible cargar los lineamientos.</p>`;
@@ -338,22 +406,92 @@ async function cargarDocumentos() {
   pintarDocumentos(usuario);
 }
 
-async function inicializarLineamientos() {
-  const usuario = obtenerUsuario();
+/**
+ * Arma la lista de ciclos que este usuario puede consultar, con su
+ * nombre. GET /ciclos devuelve { id, subject_cycle, ... } (contrato
+ * del API, no nombres de la BD).
+ */
+async function resolverCiclosDisponibles(usuario) {
+  let todos = [];
+  try {
+    const res = await peticionApi("/ciclos");
+    todos = res.ok ? await res.json() : [];
+  } catch {
+    todos = [];
+  }
+  const nombre_de = (id) => {
+    const c = todos.find((x) => x.id === Number(id));
+    return c && c.subject_cycle ? c.subject_cycle : `Ciclo ${id}`;
+  };
 
-  // El ciclo viene de ?ciclo= en la URL (lo pone ciclos.html para el
-  // administrador) o, si no viene, del propio id_cycle del usuario
-  // (Estudiante/Profesor consultando los lineamientos de su ciclo).
-  const id_cycle_url = new URLSearchParams(window.location.search).get("ciclo");
-  id_cycle_actual = id_cycle_url || (usuario && usuario.id_cycle);
+  if (usuario.rol === "administrador") {
+    return todos.map((c) => ({ id: c.id, nombre: c.subject_cycle || `Ciclo ${c.id}` }));
+  }
+  if (usuario.rol === "profesor") {
+    const ids = [...new Set([...(usuario.encargado_de || []), ...(usuario.jurado_de || [])].map(Number))];
+    return ids.map((id) => ({ id, nombre: nombre_de(id) }));
+  }
+  // Estudiante: solo su ciclo
+  return usuario.id_cycle ? [{ id: Number(usuario.id_cycle), nombre: nombre_de(usuario.id_cycle) }] : [];
+}
 
-  if (!id_cycle_actual) {
-    document.getElementById("contenedor-lineamientos").innerHTML =
-      `<p class="text-muted fst-italic">No se indicó para qué ciclo mostrar los lineamientos.</p>`;
+/** Pinta el selector de ciclo (solo si hay más de una opción). */
+function pintarSelectorCiclo(usuario) {
+  let contenedor = document.getElementById("contenedor-selector-ciclo");
+  if (!contenedor) {
+    contenedor = document.createElement("div");
+    contenedor.id = "contenedor-selector-ciclo";
+    contenedor.className = "mb-3";
+    const ancla = document.getElementById("contenedor-agregar");
+    ancla.parentNode.insertBefore(contenedor, ancla);
+  }
+
+  if (ciclos_disponibles.length <= 1) {
+    const unico = ciclos_disponibles[0];
+    contenedor.innerHTML = unico
+      ? `<p class="mb-0"><strong>Ciclo:</strong> ${escaparHtml(unico.nombre)}</p>`
+      : "";
     return;
   }
 
-  if (usuario && usuario.rol === "administrador") {
+  contenedor.innerHTML = `
+    <label for="selector-ciclo" class="form-label fw-semibold">Ciclo</label>
+    <select id="selector-ciclo" class="form-select" style="max-width:320px;">
+      ${ciclos_disponibles
+        .map((c) => `<option value="${c.id}" ${c.id === Number(id_cycle_actual) ? "selected" : ""}>${escaparHtml(c.nombre)}</option>`)
+        .join("")}
+    </select>`;
+
+  document.getElementById("selector-ciclo").addEventListener("change", async (evento) => {
+    id_cycle_actual = Number(evento.target.value);
+    // Se deja el ciclo en la URL para que un recargo mantenga la selección
+    history.replaceState(null, "", `?ciclo=${id_cycle_actual}`);
+    ocultarBanner("banner");
+    if (usuario.rol === "administrador") pintarFormularioAgregar();
+    await cargarDocumentos();
+  });
+}
+
+async function inicializarLineamientos() {
+  const usuario = obtenerUsuario();
+  if (!usuario) return;
+
+  ciclos_disponibles = await resolverCiclosDisponibles(usuario);
+
+  // ?ciclo= solo se respeta si es un número y está entre los disponibles
+  const id_cycle_url = Number(new URLSearchParams(window.location.search).get("ciclo"));
+  const url_valida = Number.isInteger(id_cycle_url) && ciclos_disponibles.some((c) => c.id === id_cycle_url);
+  id_cycle_actual = url_valida ? id_cycle_url : (ciclos_disponibles[0] ? ciclos_disponibles[0].id : null);
+
+  if (!id_cycle_actual) {
+    document.getElementById("contenedor-lineamientos").innerHTML =
+      `<p class="text-muted fst-italic">No tienes un ciclo asociado para consultar lineamientos.</p>`;
+    return;
+  }
+
+  pintarSelectorCiclo(usuario);
+
+  if (usuario.rol === "administrador") {
     pintarFormularioAgregar();
   }
 

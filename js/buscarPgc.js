@@ -39,10 +39,12 @@ async function cargarFiltros() {
     const res = await peticionApi("/ciclos");
     const ciclos = res.ok ? await res.json() : [];
     const select = document.getElementById("filtro-ciclo");
+    // GET /ciclos devuelve { id, subject_cycle, max_members, id_encargado }
+    // (contrato del API, no nombres de columnas de la BD).
     ciclos.forEach((c) => {
       const opcion = document.createElement("option");
-      opcion.value = c.id_cycle;
-      opcion.textContent = c.name_cycle || `Ciclo ${c.id_cycle}`;
+      opcion.value = c.id;
+      opcion.textContent = c.subject_cycle || `Ciclo ${c.id}`;
       select.appendChild(opcion);
     });
   } catch { /* si falla, el filtro de ciclo queda solo con "Todos" */ }

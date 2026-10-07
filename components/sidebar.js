@@ -69,9 +69,14 @@ const MENU_POR_CONTEXTO = {
   ],
 };
 
-// Mismo literal que usa radicar-propuesta.js para la etapa de fechas
-// (con tilde, confirmado por backend en cycle_dates.stage).
-const ETAPA_RADICACION = "Radicación";
+// Literales de etapa (con tilde, confirmados por backend en cycle_dates.stage).
+// OJO: llevan prefijo SIDEBAR_ a propósito. radicar-propuesta.js y
+// configurarFecha.js ya declaran "const ETAPA_RADICACION" y se cargan
+// en la misma página que este archivo: si aquí se repite el mismo
+// nombre, el navegador lanza "Identifier has already been declared" y
+// el segundo script NO se ejecuta (la página queda sin funcionar).
+const SIDEBAR_ETAPA_RADICACION = "Radicación";
+const SIDEBAR_ETAPA_REGISTRO_PGC = "Registro PGC";
 
 // Mismo texto que ya usa radicar-propuesta.js (Bug 1) para explicar
 // por qué no se puede radicar una propuesta nueva. Se centraliza
@@ -82,6 +87,12 @@ const MOTIVO_BLOQUEO_RADICAR = {
   "Rechazada": "Tu propuesta fue rechazada — edítala desde \"Mi propuesta\".",
   "Anulada": "Tu propuesta fue anulada.",
 };
+
+// Qué opción del menú depende de qué etapa del ciclo.
+const CANDADOS_POR_FECHA = [
+  { id_opcion: "radicar-propuesta", etapa: SIDEBAR_ETAPA_RADICACION, accion: "radicar propuestas" },
+  { id_opcion: "propuestaAprobada", etapa: SIDEBAR_ETAPA_REGISTRO_PGC, accion: "registrar el PGC" },
+];
 
 /**
  * Devuelve el menú que le toca al usuario: si es Profesor, según
@@ -103,21 +114,69 @@ function construirEnlaceMenu(opcion, paginaActiva) {
     </a>`;
 }
 
-/** Arma el HTML de un enlace bloqueado: gris, sin click, con candado y tooltip nativo. */
+/**
+ * Arma el HTML de un enlace bloqueado: gris, sin href (no navega) y
+ * con el motivo en un tooltip. Ya NO usa pointer-events: none, porque
+ * eso también apagaba el hover y el tooltip nunca aparecía.
+ */
 function construirEnlaceBloqueado(opcion, motivo) {
   return `
-    <span class="nav-link bloqueado" title="${escaparHtml(motivo)}">
+    <span class="nav-link bloqueado" tabindex="0" role="link" aria-disabled="true"
+          title="${escaparHtml(motivo)}" data-bs-toggle="tooltip" data-bs-placement="right">
       🔒 ${opcion.label}
     </span>`;
 }
 
 /**
- * Revisa si "Radicar propuesta" debe quedar bloqueado para este
- * estudiante: primero por tener ya una propuesta (cualquier estado),
- * y si no, por estar fuera de la fecha de la etapa "Radicación".
- * Devuelve el motivo a mostrar en el tooltip, o null si no aplica.
+ * Convierte "YYYY-MM-DD HH:mm:ss" (formato del BE) a Date. Se cambia
+ * el espacio por "T" porque algunos navegadores (Safari) devuelven
+ * Invalid Date con el espacio, y ahí el candado nunca se activaba.
  */
-async function obtenerBloqueoRadicarPropuesta(usuario) {
+function leerFechaBe(texto) {
+  return new Date(String(texto).replace(" ", "T"));
+}
+
+/** "2026-10-24 00:00:00" → "24/10/2026" para mostrar en el tooltip. */
+function formatearFechaCorta(texto) {
+  const fecha = leerFechaBe(texto);
+  return isNaN(fecha) ? texto : fecha.toLocaleDateString("es-CO");
+}
+
+/**
+ * Revisa la ventana de una etapa contra las filas de GET /ciclos/:id/fechas.
+ * Devuelve el motivo del bloqueo o null si hoy está dentro del rango.
+ * Si la etapa no está configurada TAMBIÉN se bloquea (antes se dejaba
+ * pasar y el menú decía una cosa mientras la página decía otra).
+ */
+function motivoBloqueoPorEtapa(filas, etapa, accion) {
+  const fila = (filas || []).find((f) => f.stage === etapa);
+  if (!fila) return `El periodo para ${accion} todavía no ha sido configurado para tu ciclo.`;
+
+  const ahora = new Date();
+  if (ahora < leerFechaBe(fila.start_date) || ahora > leerFechaBe(fila.end_date)) {
+    return `Fuera de fecha: habilitado del ${formatearFechaCorta(fila.start_date)} al ${formatearFechaCorta(fila.end_date)}.`;
+  }
+  return null;
+}
+
+/** Pide las fechas del ciclo del estudiante una sola vez. null si no se pudo. */
+async function obtenerFechasCiclo(usuario) {
+  if (!usuario.id_cycle) return null; // el JWT debe traer id_cycle para estudiantes
+  try {
+    const res = await peticionApi(`/ciclos/${usuario.id_cycle}/fechas`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Revisa si "Radicar propuesta" debe quedar bloqueado: primero por
+ * tener ya una propuesta (cualquier estado) y si no, por la fecha
+ * de la etapa "Radicación". Devuelve el motivo o null.
+ */
+async function obtenerBloqueoRadicarPropuesta(filas_fechas) {
   try {
     const res = await peticionApi("/propuestas/mia");
     if (res.ok) {
@@ -128,23 +187,24 @@ async function obtenerBloqueoRadicarPropuesta(usuario) {
   } catch {
     return null; // si falla la consulta, no bloqueamos por las dudas
   }
+  if (!filas_fechas) return null;
+  return motivoBloqueoPorEtapa(filas_fechas, SIDEBAR_ETAPA_RADICACION, "radicar propuestas");
+}
 
-  if (!usuario.id_cycle) return null; // sin id_cycle no se puede validar la fecha
+/** Cambia un enlace del menú por su versión bloqueada con tooltip. */
+function bloquearOpcion(elemento, opciones, id_opcion, motivo) {
+  const opcion = opciones.find((o) => o.id === id_opcion);
+  const enlaceActual = opcion && elemento.querySelector(`a[href="${opcion.href}"]`);
+  if (!enlaceActual) return;
 
-  try {
-    const res = await peticionApi(`/ciclos/${usuario.id_cycle}/fechas`);
-    if (!res.ok) return null;
-    const filas = await res.json();
-    const fila = (filas || []).find((f) => f.stage === ETAPA_RADICACION);
-    if (!fila) return null;
+  enlaceActual.outerHTML = construirEnlaceBloqueado(opcion, motivo);
 
-    const ahora = new Date();
-    if (ahora < new Date(fila.start_date) || ahora > new Date(fila.end_date)) {
-      return `Habilitado del ${fila.start_date} al ${fila.end_date}.`;
-    }
-    return null;
-  } catch {
-    return null;
+  // Si Bootstrap JS está cargado en la página, tooltip inmediato y con
+  // estilo; si no, queda el tooltip nativo del atributo title.
+  if (window.bootstrap && bootstrap.Tooltip) {
+    elemento.querySelectorAll('.bloqueado[data-bs-toggle="tooltip"]').forEach((el) => {
+      bootstrap.Tooltip.getOrCreateInstance(el);
+    });
   }
 }
 
@@ -158,15 +218,18 @@ async function renderizarBarraLateral(idContenedor, paginaActiva) {
   // Primera pintada: todo habilitado, para que el menú no tarde en aparecer.
   elemento.innerHTML = `<nav class="sidebar">${opciones.map((o) => construirEnlaceMenu(o, paginaActiva)).join("")}</nav>`;
 
-  // Candado de "Radicar propuesta" (solo aplica a Estudiante).
-  if (usuario && usuario.rol === "estudiante" && opciones.some((o) => o.id === "radicar-propuesta")) {
-    const motivo = await obtenerBloqueoRadicarPropuesta(usuario);
-    if (motivo) {
-      const enlaceActual = elemento.querySelector('a[href="radicar-propuesta.html"]');
-      if (enlaceActual) {
-        const opcion = opciones.find((o) => o.id === "radicar-propuesta");
-        enlaceActual.outerHTML = construirEnlaceBloqueado(opcion, motivo);
-      }
-    }
+  // Candados por fecha: solo aplican a Estudiante.
+  if (!usuario || usuario.rol !== "estudiante") return;
+
+  const filas_fechas = await obtenerFechasCiclo(usuario);
+
+  for (const candado of CANDADOS_POR_FECHA) {
+    if (!opciones.some((o) => o.id === candado.id_opcion)) continue;
+
+    const motivo = candado.id_opcion === "radicar-propuesta"
+      ? await obtenerBloqueoRadicarPropuesta(filas_fechas)
+      : (filas_fechas ? motivoBloqueoPorEtapa(filas_fechas, candado.etapa, candado.accion) : null);
+
+    if (motivo) bloquearOpcion(elemento, opciones, candado.id_opcion, motivo);
   }
 }

@@ -21,6 +21,43 @@ function nombresIntegrantesFicha(integrantes) {
   return integrantes.map((i) => escaparHtml(typeof i === "object" ? i.full_name : i)).join(", ");
 }
 
+/**
+ * Arma la sección de archivos del PGC. GET /pgc/:id trae
+ * archivos: [{ id_file, title_file, desc_file, url_file }],
+ * donde url_file es { url, expira_en_segundos } o null si el BE
+ * no pudo firmar la URL de ese archivo. Los enlaces se pintan
+ * después con renderEnlacePdf (ver pintarEnlacesArchivos).
+ */
+function seccionArchivosFicha(archivos) {
+  if (!Array.isArray(archivos) || archivos.length === 0) {
+    return `<p class="text-muted fst-italic mb-0" style="font-size:.85rem;">Este proyecto no tiene archivos cargados.</p>`;
+  }
+  return `
+    <ul class="list-group">
+      ${archivos
+        .map(
+          (a) => `
+        <li class="list-group-item">
+          <p style="margin:0;font-weight:600;">${escaparHtml(a.title_file)}</p>
+          ${a.desc_file ? `<p class="text-muted mb-1" style="font-size:.82rem;white-space:pre-wrap;">${escaparHtml(a.desc_file)}</p>` : ""}
+          <div id="enlace-archivo-${a.id_file}"></div>
+        </li>`
+        )
+        .join("")}
+    </ul>`;
+}
+
+/** Pinta el enlace de cada archivo una vez que la ficha ya está en el DOM. */
+function pintarEnlacesArchivos(archivos) {
+  (archivos || []).forEach((a) => {
+    renderEnlacePdf(
+      document.getElementById(`enlace-archivo-${a.id_file}`),
+      a.url_file,
+      "📄 Ver / descargar"
+    );
+  });
+}
+
 function pintarFicha(p) {
   const contenedor = document.getElementById("contenedor-ficha");
 
@@ -71,10 +108,16 @@ function pintarFicha(p) {
               </div>`
             : ""
         }
+        <div>
+          <span class="label">Archivos</span>
+          ${seccionArchivosFicha(p.archivos)}
+        </div>
       </div>
 
     </div>
   `;
+
+  pintarEnlacesArchivos(p.archivos);
 }
 
 async function inicializarFichaPgc() {

@@ -98,7 +98,9 @@ async function peticionApi(ruta, opciones = {}) {
  * contenedor. Muestra el link y una nota de expiración discreta.
  *
  * @param {HTMLElement} contenedor - Elemento donde se inyecta el HTML.
- * @param {{ url: string, "expira-en-segundos"?: number, expira_en_segundos?: number } | null | undefined} pdf
+ * @param {{ url: string, expira_en_segundos: number } | null | undefined} pdf
+ *   Formato que usa el backend en TODOS los endpoints (propuestas,
+ *   archivos de PGC, lineamientos): expira_en_segundos con guion bajo.
  *   Objeto tal como lo devuelve el backend.
  * @param {string} [etiqueta] - Texto del enlace. Se inserta como HTML: si
  *   trae texto del usuario (ej. un nombre de archivo), escápalo antes.
@@ -111,7 +113,7 @@ function renderEnlacePdf(contenedor, pdf, etiqueta = "📄 Ver documento PDF") {
     return;
   }
 
-  const segundos = pdf["expira-en-segundos"] ?? pdf.expira_en_segundos ?? 0;
+  const segundos = pdf.expira_en_segundos ?? 0;
 
   if (segundos <= 0) {
     contenedor.innerHTML = `
