@@ -43,7 +43,6 @@ function pintarTablaCiclos() {
         <td>${escaparHtml((ciclo.jurados || []).map((id_jurado) => nombreProfesor(id_jurado)).join(", ")) || "Sin asignar"}</td>
         <td class="text-end">
           <button class="btn btn-sm btn-outline-primary" onclick="abrirEdicionCiclo(${ciclo.id})">Editar</button>
-          <a class="btn btn-sm btn-outline-secondary" href="lineamientos.html?ciclo=${ciclo.id}">Lineamientos</a>
         </td>
       </tr>`
     )

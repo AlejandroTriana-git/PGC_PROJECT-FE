@@ -19,7 +19,7 @@
     <main class="main-content">
       <div class="page-head mb-4">
         <h1 style="font-size:clamp(1.4rem,3vw,1.9rem);font-weight:800;color:var(--verde-medio);">Configurar fechas</h1>
-        <p class="text-muted">Define el rango habilitado para Radicación y Registro PGC en tus ciclos a cargo.</p>
+        <p class="text-muted">Define el rango de cada etapa (Radicación, Registro PGC, Sustentación y Calificación) en los ciclos que tienes a cargo.</p>
       </div>
 
       <div id="banner" class="banner hidden"></div>
@@ -28,11 +28,10 @@
         <table class="table align-middle bg-white">
           <thead>
             <tr>
-              <th>Ciclo</th>
-              <th>Radicación</th>
-              <th></th>
-              <th>Registro PGC</th>
-              <th></th>
+              <th scope="col">Ciclo</th>
+              <th scope="col">Etapa</th>
+              <th scope="col">Fechas</th>
+              <th scope="col"><span class="visually-hidden">Acciones</span></th>
             </tr>
           </thead>
           <tbody id="tabla-fechas"></tbody>
@@ -43,28 +42,26 @@
 
   <div id="footer"></div>
 
-  <!-- Modal reutilizable: se adapta a la etapa seleccionada (Radicación o Registro PGC) -->
-  <div class="modal fade" id="modal-fechas" tabindex="-1">
+  <!-- Modal de edición de una etapa -->
+  <div class="modal fade" id="modal-fechas" tabindex="-1" aria-labelledby="fechas-titulo" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
-          <!-- El título muestra "Ciclo X — Radicación" o "Ciclo X — Registro PGC" -->
           <h5 class="modal-title" id="fechas-titulo"></h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
         </div>
         <div class="modal-body">
+          <div id="banner-modal-fechas" class="banner hidden"></div>
           <div class="row g-2">
             <div class="col-6">
-              <label for="input-fecha-inicio" class="form-label">Fecha de inicio</label>
+              <label for="input-fecha-inicio" class="form-label">Inicio</label>
               <input type="date" class="form-control" id="input-fecha-inicio">
             </div>
             <div class="col-6">
-              <label for="input-fecha-fin" class="form-label">Fecha de fin</label>
+              <label for="input-fecha-fin" class="form-label">Fin</label>
               <input type="date" class="form-control" id="input-fecha-fin">
             </div>
           </div>
-
-          <div id="banner-modal-fechas" class="banner hidden" style="margin-top:1rem;"></div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-primary" id="btn-guardar-fechas">Guardar cambios</button>

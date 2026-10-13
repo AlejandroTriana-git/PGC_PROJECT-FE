@@ -1,7 +1,12 @@
 // ============================================================
 // MIS-PROPUESTAS.JS — vista de estado de la propuesta del
-// estudiante (HU-09).
+// estudiante (HU-09), con el mismo diseño de "Mi PGC" (Issue 11):
+// cabecera + dos columnas + formulario de reenvío accesible (Issue 7).
+// Usa las piezas reutilizables de utils.js (bloqueCampo, bloqueTexto,
+// listaChips, validarCampos, enfocarBanner).
 // ============================================================
+
+const TAMANO_MAXIMO_PDF_REENVIO_MB = 10;
 
 const CLASE_POR_ESTADO = {
   "Pendiente de validación": "pendiente",
@@ -16,6 +21,16 @@ const CLASE_POR_ESTADO = {
  */
 function normalizarNombre(nombre) {
   return String(nombre ?? "").trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+/** Valida el PDF del reenvío: obligatorio, tipo PDF y tamaño máximo. */
+function validarPdfReenvio(archivo) {
+  if (!archivo) return "Debes adjuntar el PDF actualizado de la propuesta.";
+  if (archivo.type !== "application/pdf") return "El archivo debe ser un PDF.";
+  if (archivo.size / (1024 * 1024) > TAMANO_MAXIMO_PDF_REENVIO_MB) {
+    return `El PDF no debe superar ${TAMANO_MAXIMO_PDF_REENVIO_MB} MB.`;
+  }
+  return null;
 }
 
 /**
@@ -58,13 +73,18 @@ async function pintarCategoriasReenvio(categoriasActuales) {
   }
 }
 
-/** Muestra u oculta el formulario de edición. */
+/**
+ * Muestra u oculta el formulario de edición y mueve el foco con él:
+ * al abrir, al primer campo; al cerrar, de vuelta al botón (WCAG 2.4.3).
+ */
 function toggleFormularioReenvio(visible) {
   const form = document.getElementById("form-reenvio");
   const btnAbrir = document.getElementById("btn-abrir-reenvio");
   if (!form || !btnAbrir) return;
   form.classList.toggle("hidden", !visible);
   btnAbrir.classList.toggle("hidden", visible);
+  const destino = visible ? document.getElementById("re-titulo") : btnAbrir;
+  if (destino) destino.focus();
 }
 
 /**
@@ -144,192 +164,168 @@ async function inicializarMiPropuesta(mensaje_exito) {
   const puedeReenviar = esLider && propuesta.estado === "Rechazada";
   const reenviosRestantes = 3 - (propuesta.resubmit_count || 0);
 
-  // Badges de categorías desde el nuevo campo
-  const categoriasBadges = Array.isArray(propuesta.categorias) && propuesta.categorias.length > 0
-    ? propuesta.categorias
-        .map((c) => `<span class="badge bg-secondary me-1">${escaparHtml(typeof c === "object" ? c.name_category : c)}</span>`)
-        .join("")
-    : `<span class="text-muted">Sin categorías</span>`;
+  const textos_categorias = Array.isArray(propuesta.categorias)
+    ? propuesta.categorias.map((c) => (typeof c === "object" ? c.name_category : c))
+    : [];
+  const textos_integrantes = Array.isArray(propuesta.integrantes)
+    ? propuesta.integrantes.map((i) => (typeof i === "object" ? i.full_name : `#${i}`))
+    : [];
 
-  // Nombres de integrantes: el BE ahora devuelve [{id_user, full_name}]
-  const nombresIntegrantes = Array.isArray(propuesta.integrantes) && propuesta.integrantes.length > 0
-    ? propuesta.integrantes
-        .map((i) => escaparHtml(typeof i === "object" ? i.full_name : `#${i}`))
-        .join(", ")
-    : "Solo el líder";
+  // "Aprobada por X el dd/mm/aaaa" (solo si el backend manda reviewer_name).
+  const fecha_revision = propuesta.reviewed_at ? new Date(propuesta.reviewed_at) : null;
+  const texto_fecha_revision =
+    fecha_revision && !Number.isNaN(fecha_revision.getTime())
+      ? ` el ${fecha_revision.toLocaleDateString("es-CO")}`
+      : "";
+
+  // ── Formulario de edición y reenvío (solo el líder, solo si fue rechazada) ──
+  const bloque_reenvio = puedeReenviar
+    ? `
+    <div class="campo-bloque mt-4">
+      <button id="btn-abrir-reenvio" class="btn btn-primary" type="button"
+              onclick="toggleFormularioReenvio(true)">
+        <span aria-hidden="true">✏️</span> Editar y reenviar
+      </button>
+
+      <div id="banner-reenvio" class="banner hidden" style="margin-top:1rem;"></div>
+
+      <form id="form-reenvio" class="row g-3 hidden" style="margin-top:1.2rem;" novalidate>
+
+        <div class="col-12">
+          <h3 class="titulo-seccion mb-1">Editar y reenviar propuesta</h3>
+          <p class="text-muted mb-0" style="font-size:.82rem;">
+            Reenvíos restantes: <strong>${reenviosRestantes}</strong> de 3.
+            Corrige los campos observados y adjunta el PDF actualizado.
+            Todos los campos son obligatorios, excepto los integrantes.
+          </p>
+        </div>
+
+        <div class="col-12">
+          <label for="re-titulo" class="form-label">Título del proyecto</label>
+          <input type="text" class="form-control" id="re-titulo" required
+                 value="${escaparHtml(propuesta.titulo)}">
+        </div>
+
+        <div class="col-12">
+          <span id="etiqueta-categorias-reenvio" class="form-label d-block">Categorías <span class="text-danger" aria-hidden="true">*</span><span class="visually-hidden">(obligatorio)</span></span>
+          <div id="lista-categorias-reenvio" class="border rounded p-3" role="group" aria-labelledby="etiqueta-categorias-reenvio" aria-describedby="ayuda-categorias-reenvio">
+            <span class="text-muted fst-italic" style="font-size:.82rem;">Cargando categorías…</span>
+          </div>
+          <div id="ayuda-categorias-reenvio" class="form-text">Selecciona una o más categorías.</div>
+        </div>
+
+        <div class="col-12">
+          <label for="re-descripcion" class="form-label">Descripción general</label>
+          <textarea class="form-control" id="re-descripcion" rows="2" required>${escaparHtml(propuesta.descr_proposal)}</textarea>
+        </div>
+
+        <div class="col-12">
+          <label for="re-problema" class="form-label">Problema</label>
+          <textarea class="form-control" id="re-problema" rows="3" required>${escaparHtml(propuesta.problem_proposal)}</textarea>
+        </div>
+
+        <div class="col-12">
+          <label for="re-justificacion" class="form-label">Justificación</label>
+          <textarea class="form-control" id="re-justificacion" rows="3" required>${escaparHtml(propuesta.justification_proposal)}</textarea>
+        </div>
+
+        <div class="col-12">
+          <label for="re-objetivos" class="form-label">Objetivos</label>
+          <textarea class="form-control" id="re-objetivos" rows="3" required>${escaparHtml(propuesta.objectives_proposal)}</textarea>
+        </div>
+
+        <div class="col-12">
+          <label for="re-solucion" class="form-label">Solución propuesta</label>
+          <textarea class="form-control" id="re-solucion" rows="3" required>${escaparHtml(propuesta.solution_proposal)}</textarea>
+        </div>
+
+        <div class="col-12">
+          <span id="etiqueta-integrantes-reenvio" class="form-label d-block">Integrantes</span>
+          <div id="lista-integrantes-reenvio" class="border rounded p-3" role="group" aria-labelledby="etiqueta-integrantes-reenvio" aria-describedby="ayuda-integrantes-reenvio">
+            <span class="text-muted fst-italic" style="font-size:.82rem;">Cargando integrantes…</span>
+          </div>
+          <div id="ayuda-integrantes-reenvio" class="form-text">Solo se muestran estudiantes de tu mismo ciclo.</div>
+        </div>
+
+        <div class="col-12">
+          <label for="re-pdf" class="form-label">Documento PDF actualizado</label>
+          <input type="file" class="form-control" id="re-pdf" accept="application/pdf" required aria-describedby="ayuda-re-pdf">
+          <div id="ayuda-re-pdf" class="form-text">Solo archivos .pdf, máximo ${TAMANO_MAXIMO_PDF_REENVIO_MB} MB.</div>
+        </div>
+
+        <div class="col-12 d-flex gap-2 flex-wrap">
+          <button type="submit" class="btn btn-primary" id="btn-reenviar">Reenviar propuesta</button>
+          <button type="button" class="btn btn-outline-secondary"
+                  onclick="toggleFormularioReenvio(false)">Cancelar</button>
+        </div>
+
+      </form>
+    </div>`
+    : "";
 
   contenedor.innerHTML = `
     <!-- Banner de resultado general (por ejemplo, tras un reenvío correcto) -->
     <div id="banner-propuesta" class="banner hidden"></div>
 
-    <div class="card-resumen">
-
-      <!-- Encabezado: título + estado -->
-      <span class="label">Título</span>
-      <h2 style="font-size:1.2rem;font-weight:700;color:var(--verde-udec);">${escaparHtml(propuesta.titulo)}</h2>
-
-      <div class="mt-2 mb-3">
+    <div class="pgc-cabecera">
+      <h2>${escaparHtml(propuesta.titulo)}</h2>
+      <div class="d-flex flex-wrap align-items-center gap-2">
         <span class="badge-estado ${claseEstado}">${escaparHtml(propuesta.estado)}</span>
         ${propuesta.resubmit_count > 0
-          ? `<span class="text-muted ms-2" style="font-size:.8rem;">Reenvíos realizados: ${propuesta.resubmit_count} de 3</span>`
+          ? `<span class="text-muted" style="font-size:.82rem;">Reenvíos realizados: ${escaparHtml(propuesta.resubmit_count)} de 3</span>`
           : ""}
       </div>
-
       ${propuesta.estado === "Aprobada" && propuesta.reviewer_name
-        ? `<p class="text-muted mt-1 mb-3" style="font-size:.8rem;">
-             Aprobada por <strong>${escaparHtml(propuesta.reviewer_name)}</strong>
-             ${propuesta.reviewed_at ? `el ${escaparHtml(new Date(propuesta.reviewed_at).toLocaleDateString("es-CO"))}` : ""}
+        ? `<p class="text-muted mt-2 mb-0" style="font-size:.85rem;">
+             Aprobada por <strong>${escaparHtml(propuesta.reviewer_name)}</strong>${escaparHtml(texto_fecha_revision)}
            </p>`
         : ""}
-
-      ${propuesta.estado === "Rechazada"
-        ? `<div class="banner error" style="margin-top:.5rem;margin-bottom:1rem;">
-             <span><strong>Motivo del rechazo:</strong> ${escaparHtml(propuesta.comentario)}</span>
-           </div>`
-        : ""}
-
-      <!-- Detalle completo de la propuesta -->
-      <div style="display:grid;gap:.75rem;margin-bottom:1rem;">
-
-        <div>
-          <span class="label">Categorías</span>
-          <div style="margin:0;">${categoriasBadges}</div>
-        </div>
-
-        <div>
-          <span class="label">Descripción</span>
-          <p style="margin:0;white-space:pre-wrap;">${escaparHtml(propuesta.descr_proposal) || "—"}</p>
-        </div>
-
-        <div>
-          <span class="label">Líder</span>
-          <p style="margin:0;">${escaparHtml(propuesta.leader_name) || "—"}</p>
-        </div>
-
-        <div>
-          <span class="label">Integrantes</span>
-          <p style="margin:0;">${nombresIntegrantes}</p>
-        </div>
-
-        <div>
-          <span class="label">Problema</span>
-          <p style="margin:0;white-space:pre-wrap;">${escaparHtml(propuesta.problem_proposal) || "—"}</p>
-        </div>
-
-        <div>
-          <span class="label">Justificación</span>
-          <p style="margin:0;white-space:pre-wrap;">${escaparHtml(propuesta.justification_proposal) || "—"}</p>
-        </div>
-
-        <div>
-          <span class="label">Objetivos</span>
-          <p style="margin:0;white-space:pre-wrap;">${escaparHtml(propuesta.objectives_proposal) || "—"}</p>
-        </div>
-
-        <div>
-          <span class="label">Solución propuesta</span>
-          <p style="margin:0;white-space:pre-wrap;">${escaparHtml(propuesta.solution_proposal) || "—"}</p>
-        </div>
-
-      </div>
-
-      <!-- Enlace al PDF con nota de expiración -->
-      <div id="mis-pdf-contenedor" class="mt-2"></div>
-
-      ${puedeReenviar
-        ? `<!-- Botón para desplegar el formulario -->
-           <button id="btn-abrir-reenvio" class="btn btn-primary mt-3"
-                   onclick="toggleFormularioReenvio(true)">
-             ✏️ Editar y reenviar
-           </button>
-
-           <!-- Banner de resultado del reenvío -->
-           <div id="banner-reenvio" class="banner hidden" style="margin-top:1rem;"></div>
-
-           <!-- Formulario de edición (inicialmente oculto) -->
-           <form id="form-reenvio" class="row g-3 hidden" style="margin-top:1.2rem;" novalidate>
-
-             <div class="col-12">
-               <p class="text-muted" style="font-size:.82rem;margin-bottom:.25rem;">
-                 Reenvíos restantes: <strong>${reenviosRestantes}</strong> de 3.
-                 Corrige los campos observados y adjunta el PDF actualizado.
-               </p>
-             </div>
-
-             <div class="col-12">
-               <label for="re-titulo" class="form-label">Título del proyecto</label>
-               <input type="text" class="form-control" id="re-titulo"
-                      value="${escaparHtml(propuesta.titulo)}">
-             </div>
-
-             <div class="col-12">
-               <label class="form-label">Categorías <span class="text-danger">*</span></label>
-               <div id="lista-categorias-reenvio" class="border rounded p-3">
-                 <span class="text-muted fst-italic" style="font-size:.82rem;">Cargando categorías…</span>
-               </div>
-               <div class="form-text">Selecciona una o más categorías.</div>
-             </div>
-
-             <div class="col-12">
-               <label for="re-descripcion" class="form-label">Descripción general</label>
-               <textarea class="form-control" id="re-descripcion" rows="2">${escaparHtml(propuesta.descr_proposal)}</textarea>
-             </div>
-
-             <div class="col-12">
-               <label for="re-problema" class="form-label">Problema</label>
-               <textarea class="form-control" id="re-problema" rows="3">${escaparHtml(propuesta.problem_proposal)}</textarea>
-             </div>
-
-             <div class="col-12">
-               <label for="re-justificacion" class="form-label">Justificación</label>
-               <textarea class="form-control" id="re-justificacion" rows="3">${escaparHtml(propuesta.justification_proposal)}</textarea>
-             </div>
-
-             <div class="col-12">
-               <label for="re-objetivos" class="form-label">Objetivos</label>
-               <textarea class="form-control" id="re-objetivos" rows="3">${escaparHtml(propuesta.objectives_proposal)}</textarea>
-             </div>
-
-             <div class="col-12">
-               <label for="re-solucion" class="form-label">Solución propuesta</label>
-               <textarea class="form-control" id="re-solucion" rows="3">${escaparHtml(propuesta.solution_proposal)}</textarea>
-             </div>
-
-             <div class="col-12">
-               <label class="form-label">Integrantes</label>
-               <div id="lista-integrantes-reenvio" class="border rounded p-3">
-                 <span class="text-muted fst-italic" style="font-size:.82rem;">Cargando integrantes…</span>
-               </div>
-               <div class="form-text">Solo se muestran estudiantes de tu mismo ciclo.</div>
-             </div>
-
-             <div class="col-12">
-               <label for="re-pdf" class="form-label">Documento PDF actualizado</label>
-               <input type="file" class="form-control" id="re-pdf" accept="application/pdf">
-               <div class="form-text">Solo archivos .pdf, máximo 10 MB.</div>
-             </div>
-
-             <div class="col-12 d-flex gap-2 flex-wrap">
-               <button type="submit" class="btn btn-primary" id="btn-reenviar">Reenviar propuesta</button>
-               <button type="button" class="btn btn-outline-secondary"
-                       onclick="toggleFormularioReenvio(false)">Cancelar</button>
-             </div>
-
-           </form>`
-        : ""}
     </div>
+
+    ${propuesta.estado === "Rechazada"
+      ? `<div class="banner error" style="margin-bottom:1.25rem;">
+           <span><strong>Motivo del rechazo:</strong> ${escaparHtml(propuesta.comentario)}</span>
+         </div>`
+      : ""}
+
+    <div class="row g-4">
+      <div class="col-lg-8">
+        <h3 class="titulo-seccion">Descripción de la propuesta</h3>
+        <div class="d-grid gap-3">
+          ${bloqueTexto("📝", "Descripción general", propuesta.descr_proposal)}
+          ${bloqueTexto("🧩", "Problema", propuesta.problem_proposal)}
+          ${bloqueTexto("💡", "Justificación", propuesta.justification_proposal)}
+          ${bloqueTexto("🎯", "Objetivos", propuesta.objectives_proposal)}
+          ${bloqueTexto("🛠️", "Solución propuesta", propuesta.solution_proposal)}
+        </div>
+      </div>
+      <div class="col-lg-4">
+        <h3 class="titulo-seccion">Datos generales</h3>
+        <div class="d-grid gap-3">
+          ${bloqueCampo("👤", "Líder", `<p class="campo-texto">${escaparHtml(propuesta.leader_name) || "—"}</p>`)}
+          ${bloqueCampo("👥", "Integrantes", listaChips(textos_integrantes, "Solo el líder"))}
+          ${bloqueCampo("🏷️", "Categorías", listaChips(textos_categorias, "Sin categorías"))}
+          ${bloqueCampo("📄", "Documento PDF", `<div id="mis-pdf-contenedor"></div>`)}
+        </div>
+      </div>
+    </div>
+
+    ${bloque_reenvio}
   `;
 
-  // Renderizar el enlace del PDF con nota de expiración.
+  // Enlace al PDF con nota de expiración: { url, expira_en_segundos }.
   renderEnlacePdf(
     document.getElementById("mis-pdf-contenedor"),
-    propuesta.pdf   // { url, "expira-en-segundos": 3600 }
+    propuesta.pdf,
+    `<span aria-hidden="true">📄</span> Ver documento de la propuesta`
   );
 
   // Si venimos de un reenvío correcto, el mensaje se muestra DESPUÉS de
   // repintar (antes se mostraba y el repintado lo borraba al instante).
+  // El botón que se pulsó ya no existe, así que el foco va al aviso.
   if (mensaje_exito) {
     mostrarBanner("banner-propuesta", "success", mensaje_exito);
+    enfocarBanner("banner-propuesta");
   }
 
   // Cargar integrantes, categorías y conectar el submit solo si aplica.
@@ -370,28 +366,21 @@ async function manejarReenvio(evento, propuesta) {
     .filter((e) => document.getElementById(`ri-${e.id_user}`)?.checked)
     .map((e) => e.id_user);
 
-  // ── Validaciones ───────────────────────────────────────────
-  if (!titulo || !descripcion || !problema || !justificacion || !objetivos || !solucion) {
-    mostrarBanner("banner-reenvio", "error", "Debes completar todos los campos.");
-    return;
-  }
-  if (categorias.length === 0) {
-    mostrarBanner("banner-reenvio", "error", "Debes seleccionar al menos una categoría.");
-    return;
-  }
-  if (!archivoPdf) {
-    mostrarBanner("banner-reenvio", "error", "Debes adjuntar el PDF actualizado de la propuesta.");
-    return;
-  }
-  if (archivoPdf.type !== "application/pdf") {
-    mostrarBanner("banner-reenvio", "error", "El archivo debe ser un PDF.");
-    return;
-  }
-  const tamanoMB = archivoPdf.size / (1024 * 1024);
-  if (tamanoMB > 10) {
-    mostrarBanner("banner-reenvio", "error", "El PDF no debe superar 10 MB.");
-    return;
-  }
+  // ── Validaciones: cada mensaje nombra su campo y el foco va al primero con error ──
+  const campos_ok = validarCampos(
+    [
+      { id: "re-titulo", error: titulo ? null : "El título es obligatorio." },
+      { id: "lista-categorias-reenvio", error: categorias.length > 0 ? null : "Selecciona al menos una categoría." },
+      { id: "re-descripcion", error: descripcion ? null : "La descripción es obligatoria." },
+      { id: "re-problema", error: problema ? null : "El problema es obligatorio." },
+      { id: "re-justificacion", error: justificacion ? null : "La justificación es obligatoria." },
+      { id: "re-objetivos", error: objetivos ? null : "Los objetivos son obligatorios." },
+      { id: "re-solucion", error: solucion ? null : "La solución propuesta es obligatoria." },
+      { id: "re-pdf", error: validarPdfReenvio(archivoPdf) },
+    ],
+    "banner-reenvio"
+  );
+  if (!campos_ok) return;
 
   const boton = document.getElementById("btn-reenviar");
   boton.disabled = true;
@@ -411,21 +400,22 @@ async function manejarReenvio(evento, propuesta) {
     fd.append("pdf",                      archivoPdf);
 
     // PATCH /propuestas/:id/reenviar
-    // Usar id_proposal tal como lo devuelve el BE
     const res = await peticionApi(`/propuestas/${propuesta.id_proposal}/reenviar`, { method: "PATCH", body: fd });
     const json = await res.json().catch(() => ({}));
 
     if (!res.ok) {
       mostrarBanner("banner-reenvio", "error", json.mensaje || "No fue posible reenviar la propuesta.");
+      enfocarBanner("banner-reenvio");
       return;
     }
 
-    // Bug 4: re-renderizar la sección completa para reflejar el nuevo estado
-    // "Pendiente de validación" sin necesidad de cambiar de menú. El mensaje
-    // de éxito se pasa a inicializarMiPropuesta para que se muestre al final.
+    // Re-renderiza la sección completa para reflejar el nuevo estado
+    // "Pendiente de validación". El mensaje de éxito se pasa a
+    // inicializarMiPropuesta para que se muestre (y reciba el foco) al final.
     await inicializarMiPropuesta(json.mensaje || "Propuesta reenviada correctamente.");
   } catch {
     mostrarBanner("banner-reenvio", "error", "No fue posible conectar con el servidor.");
+    enfocarBanner("banner-reenvio");
   } finally {
     boton.disabled = false;
     boton.textContent = "Reenviar propuesta";

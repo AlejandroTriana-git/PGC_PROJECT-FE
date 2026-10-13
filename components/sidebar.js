@@ -1,211 +1,209 @@
 // ============================================================
-// SIDEBAR.JS — menú lateral según rol y, para Profesor, según
-// el contexto activo (Profesor / Encargado / Jurado). Cada página
-// solo hace:
+// SIDEBAR.JS — menú lateral según rol y, para Profesor, según el
+// contexto activo (Profesor / Encargado / Jurado). Cada página solo hace:
 //
 //   <div id="sidebar"></div>
 //   <script src="components/sidebar.js"></script>
 //   <script> renderizarBarraLateral("sidebar", "dashboard"); </script>
 //
-// El segundo argumento es el nombre de la página activa, para
-// resaltar el enlace correspondiente.
+// El segundo argumento es el id de la página activa, para resaltar su enlace.
 //
-// IMPORTANTE: un Profesor ya NO ve un menú combinado con todas
-// sus capacidades a la vez. Ve solo el menú del contexto que
-// tenga activo en ese momento (ver auth.js / navbar.js) — si
-// cambia de contexto en el topbar, este menú cambia con él.
+// Cada entrada del menú es un enlace suelto { id, label, href } o un grupo
+// desplegable { grupo, opciones: [...] }. Un grupo que queda con una sola
+// opción visible se muestra como enlace suelto, y uno sin opciones no se muestra.
 //
-// CANDADOS: el bloqueo de "Radicar propuesta" que se ve aquí es
-// SOLO COSMÉTICO (evita el clic con pointer-events: none) — la
-// protección real vive dentro de radicar-propuesta.html, que
-// revisa lo mismo al cargar y no pinta el formulario si no debe.
-// Si alguien fuerza la URL, la página se protege sola.
+// OPCIONES OCULTAS: si el estudiante no puede usar una opción (ya tiene una
+// propuesta, o su etapa no está abierta), la opción NO aparece en el menú.
+// Esto es solo comodidad: la protección real vive dentro de cada página.
+// Si una consulta falla, la opción se muestra (no se oculta por error).
 // ============================================================
 
-// Menú de Estudiante y Administrador: sin contexto, fijo por rol.
 const MENU_BASE_POR_ROL = {
   estudiante: [
     { id: "dashboard", label: "Inicio", href: "dashboard.html" },
-    { id: "radicar-propuesta", label: "Radicar propuesta", href: "radicar-propuesta.html" },
-    { id: "mis-propuestas", label: "Mi propuesta", href: "mis-propuestas.html" },
-    { id: "propuestaAprobada", label: "Propuestas aprobadas", href: "propuestaAprobada.html" },
-    { id: "miPgc", label: "Mi PGC", href: "miPgc.html" },
+    {
+      grupo: "Propuesta",
+      opciones: [
+        { id: "radicar-propuesta", label: "Radicar propuesta", href: "radicar-propuesta.html" },
+        { id: "mis-propuestas", label: "Mi propuesta", href: "mis-propuestas.html" },
+        { id: "propuestaAprobada", label: "Propuestas aprobadas", href: "propuestaAprobada.html" },
+      ],
+    },
+    { grupo: "PGC", opciones: [{ id: "miPgc", label: "Mi PGC", href: "miPgc.html" }] },
     { id: "buscarPgc", label: "Buscar PGC", href: "buscarPgc.html" },
-    { id: "lineamientos", label: "Lineamientos", href: "lineamientos.html" },
+    { id: "lineamiento", label: "Lineamientos", href: "lineamiento.html" },
     { id: "perfil", label: "Mi perfil", href: "perfil.html" },
   ],
   administrador: [
     { id: "dashboard", label: "Inicio", href: "dashboard.html" },
-    { id: "ciclos", label: "Ciclos", href: "ciclos.html" },
-    { id: "usuarios", label: "Usuarios", href: "usuarios.html" },
+    {
+      grupo: "Configuración",
+      opciones: [
+        { id: "ciclos", label: "Ciclos", href: "ciclos.html" },
+        { id: "usuarios", label: "Usuarios", href: "usuarios.html" },
+      ],
+    },
     { id: "reportes", label: "Reportes", href: "reportes.html" },
     { id: "buscarPgc", label: "Buscar PGC", href: "buscarPgc.html" },
-    { id: "lineamientos", label: "Lineamientos", href: "lineamientos.html" },
+    { id: "lineamiento", label: "Lineamientos", href: "lineamiento.html" },
     { id: "perfil", label: "Mi perfil", href: "perfil.html" },
   ],
 };
 
-// Menú de Profesor: uno distinto por cada contexto posible.
 const MENU_POR_CONTEXTO = {
   profesor: [
     { id: "dashboard", label: "Inicio", href: "dashboard.html" },
     { id: "reportes", label: "Propuestas", href: "reportes.html" },
     { id: "buscarPgc", label: "Buscar PGC", href: "buscarPgc.html" },
-    { id: "lineamientos", label: "Lineamientos", href: "lineamientos.html" },
+    { id: "lineamiento", label: "Lineamientos", href: "lineamiento.html" },
     { id: "perfil", label: "Mi perfil", href: "perfil.html" },
   ],
   encargado: [
     { id: "aprobaciones", label: "Aprobaciones", href: "aprobaciones.html" },
-    { id: "configurarFecha", label: "Configurar fechas", href: "configurarFecha.html" },
+    {
+      grupo: "Documentos del ciclo",
+      opciones: [
+        { id: "lineamiento", label: "Lineamientos", href: "lineamiento.html" },
+        { id: "rubrica", label: "Rúbricas", href: "rubrica.html" },
+        { id: "configurarFecha", label: "Configurar fechas", href: "configurarFecha.html" },
+      ],
+    },
     { id: "buscarPgc", label: "Buscar PGC", href: "buscarPgc.html" },
-    { id: "lineamientos", label: "Lineamientos", href: "lineamientos.html" },
     { id: "perfil", label: "Mi perfil", href: "perfil.html" },
   ],
   jurado: [
-    { id: "evaluaciones", label: "Evaluaciones", href: "evaluaciones.html" },
+    {
+      grupo: "Evaluaciones",
+      opciones: [
+        { id: "calificar", label: "Calificar", href: "calificar.html" },
+        { id: "calificado", label: "Calificados", href: "calificado.html" },
+      ],
+    },
     { id: "buscarPgc", label: "Buscar PGC", href: "buscarPgc.html" },
-    { id: "lineamientos", label: "Lineamientos", href: "lineamientos.html" },
+    { id: "lineamiento", label: "Lineamientos", href: "lineamiento.html" },
     { id: "perfil", label: "Mi perfil", href: "perfil.html" },
   ],
 };
 
-// Literales de etapa (con tilde, confirmados por backend en cycle_dates.stage).
-// OJO: llevan prefijo SIDEBAR_ a propósito. radicar-propuesta.js y
-// configurarFecha.js ya declaran "const ETAPA_RADICACION" y se cargan
-// en la misma página que este archivo: si aquí se repite el mismo
-// nombre, el navegador lanza "Identifier has already been declared" y
-// el segundo script NO se ejecuta (la página queda sin funcionar).
-const SIDEBAR_ETAPA_RADICACION = "Radicación";
-const SIDEBAR_ETAPA_REGISTRO_PGC = "Registro PGC";
-
-// Mismo texto que ya usa radicar-propuesta.js (Bug 1) para explicar
-// por qué no se puede radicar una propuesta nueva. Se centraliza
-// aquí para que el candado del menú diga lo mismo que la página.
-const MOTIVO_BLOQUEO_RADICAR = {
-  "Pendiente de validación": "Ya tienes una propuesta pendiente de validación.",
-  "Aprobada": "Tu propuesta ya fue aprobada — continúa desde \"Mi PGC\".",
-  "Rechazada": "Tu propuesta fue rechazada — edítala desde \"Mi propuesta\".",
-  "Anulada": "Tu propuesta fue anulada.",
+// Opciones del estudiante que solo existen mientras su etapa está abierta.
+// Los nombres de etapa son los del ENUM de cycle_dates.stage (con tilde).
+const MENU_ETAPA_POR_OPCION = {
+  "radicar-propuesta": "Radicación",
+  "propuestaAprobada": "Registro PGC",
 };
 
-// Qué opción del menú depende de qué etapa del ciclo.
-const CANDADOS_POR_FECHA = [
-  { id_opcion: "radicar-propuesta", etapa: SIDEBAR_ETAPA_RADICACION, accion: "radicar propuestas" },
-  { id_opcion: "propuestaAprobada", etapa: SIDEBAR_ETAPA_REGISTRO_PGC, accion: "registrar el PGC" },
-];
-
-/**
- * Devuelve el menú que le toca al usuario: si es Profesor, según
- * su contexto activo; si no, el menú fijo de su rol.
- */
+/** Devuelve el menú del usuario: por contexto si es Profesor, fijo por rol si no. */
 function construirMenu(usuario) {
   if (usuario.rol === "profesor") {
-    const contexto = obtenerContextoActivo();
-    return MENU_POR_CONTEXTO[contexto] || MENU_POR_CONTEXTO.profesor;
+    return MENU_POR_CONTEXTO[obtenerContextoActivo()] || MENU_POR_CONTEXTO.profesor;
   }
   return MENU_BASE_POR_ROL[usuario.rol] || [];
 }
 
-/** Arma el HTML de un enlace de menú normal (habilitado). */
+/** Lista plana de opciones (saca las opciones de dentro de los grupos). */
+function aplanarOpciones(menu) {
+  return menu.flatMap((entrada) => (entrada.grupo ? entrada.opciones : [entrada]));
+}
+
+/** Quita las opciones ocultas; un grupo sin opciones desaparece. */
+function filtrarMenu(menu, ocultas) {
+  const resultado = [];
+  menu.forEach((entrada) => {
+    if (entrada.grupo) {
+      const opciones = entrada.opciones.filter((opcion) => !ocultas.has(opcion.id));
+      if (opciones.length > 0) resultado.push({ ...entrada, opciones });
+    } else if (!ocultas.has(entrada.id)) {
+      resultado.push(entrada);
+    }
+  });
+  return resultado;
+}
+
 function construirEnlaceMenu(opcion, paginaActiva) {
+  const activo = opcion.id === paginaActiva;
   return `
-    <a class="nav-link${opcion.id === paginaActiva ? " active" : ""}" href="${opcion.href}">
+    <a class="nav-link${activo ? " active" : ""}" href="${opcion.href}"${activo ? ' aria-current="page"' : ""}>
       ${opcion.label}
     </a>`;
 }
 
-/**
- * Arma el HTML de un enlace bloqueado: gris, sin href (no navega) y
- * con el motivo en un tooltip. Ya NO usa pointer-events: none, porque
- * eso también apagaba el hover y el tooltip nunca aparecía.
- */
-function construirEnlaceBloqueado(opcion, motivo) {
+/** Grupo desplegable (<details>, operable con teclado); abierto si contiene la página activa. */
+function construirGrupoMenu(grupo, paginaActiva) {
+  if (grupo.opciones.length === 1) return construirEnlaceMenu(grupo.opciones[0], paginaActiva);
+
+  const abierto = grupo.opciones.some((opcion) => opcion.id === paginaActiva);
   return `
-    <span class="nav-link bloqueado" tabindex="0" role="link" aria-disabled="true"
-          title="${escaparHtml(motivo)}" data-bs-toggle="tooltip" data-bs-placement="right">
-      🔒 ${opcion.label}
-    </span>`;
+    <details class="grupo-menu"${abierto ? " open" : ""}>
+      <summary class="nav-link">${escaparHtml(grupo.grupo)}</summary>
+      <div class="grupo-menu-items">
+        ${grupo.opciones.map((opcion) => construirEnlaceMenu(opcion, paginaActiva)).join("")}
+      </div>
+    </details>`;
 }
 
-/**
- * Convierte "YYYY-MM-DD HH:mm:ss" (formato del BE) a Date. Se cambia
- * el espacio por "T" porque algunos navegadores (Safari) devuelven
- * Invalid Date con el espacio, y ahí el candado nunca se activaba.
- */
-function leerFechaBe(texto) {
-  return new Date(String(texto).replace(" ", "T"));
+function construirItemMenu(entrada, paginaActiva) {
+  return entrada.grupo ? construirGrupoMenu(entrada, paginaActiva) : construirEnlaceMenu(entrada, paginaActiva);
 }
 
-/** "2026-10-24 00:00:00" → "24/10/2026" para mostrar en el tooltip. */
-function formatearFechaCorta(texto) {
-  const fecha = leerFechaBe(texto);
-  return isNaN(fecha) ? texto : fecha.toLocaleDateString("es-CO");
+// ── Lectura de fechas para decidir qué opciones ocultar ──────────────
+
+/** Convierte "YYYY-MM-DD HH:mm:ss" o ISO en Date (Safari no lee el espacio). */
+function leerFechaMenu(valor) {
+  if (!valor) return null;
+  const fecha = new Date(String(valor).replace(" ", "T"));
+  return Number.isNaN(fecha.getTime()) ? null : fecha;
 }
 
-/**
- * Revisa la ventana de una etapa contra las filas de GET /ciclos/:id/fechas.
- * Devuelve el motivo del bloqueo o null si hoy está dentro del rango.
- * Si la etapa no está configurada TAMBIÉN se bloquea (antes se dejaba
- * pasar y el menú decía una cosa mientras la página decía otra).
- */
-function motivoBloqueoPorEtapa(filas, etapa, accion) {
-  const fila = (filas || []).find((f) => f.stage === etapa);
-  if (!fila) return `El periodo para ${accion} todavía no ha sido configurado para tu ciclo.`;
-
-  const ahora = new Date();
-  if (ahora < leerFechaBe(fila.start_date) || ahora > leerFechaBe(fila.end_date)) {
-    return `Fuera de fecha: habilitado del ${formatearFechaCorta(fila.start_date)} al ${formatearFechaCorta(fila.end_date)}.`;
-  }
-  return null;
-}
-
-/** Pide las fechas del ciclo del estudiante una sola vez. null si no se pudo. */
-async function obtenerFechasCiclo(usuario) {
-  if (!usuario.id_cycle) return null; // el JWT debe traer id_cycle para estudiantes
+async function obtenerFechasMenu(id_cycle) {
   try {
-    const res = await peticionApi(`/ciclos/${usuario.id_cycle}/fechas`);
-    if (!res.ok) return null;
-    return await res.json();
+    const res = await peticionApi(`/ciclos/${id_cycle}/fechas`);
+    return res.ok ? await res.json() : null;
   } catch {
     return null;
   }
 }
 
-/**
- * Revisa si "Radicar propuesta" debe quedar bloqueado: primero por
- * tener ya una propuesta (cualquier estado) y si no, por la fecha
- * de la etapa "Radicación". Devuelve el motivo o null.
- */
-async function obtenerBloqueoRadicarPropuesta(filas_fechas) {
-  try {
-    const res = await peticionApi("/propuestas/mia");
-    if (res.ok) {
-      const propuesta = await res.json();
-      return MOTIVO_BLOQUEO_RADICAR[propuesta.estado] || "Ya tienes una propuesta registrada.";
-    }
-    // 404: no tiene propuesta → sigue al chequeo de fecha
-  } catch {
-    return null; // si falla la consulta, no bloqueamos por las dudas
-  }
-  if (!filas_fechas) return null;
-  return motivoBloqueoPorEtapa(filas_fechas, SIDEBAR_ETAPA_RADICACION, "radicar propuestas");
+/** true si la etapa existe y ahora mismo está dentro de su rango. */
+function menuVentanaAbierta(filas, etapa) {
+  const fila = (filas || []).find((f) => f.stage === etapa);
+  if (!fila) return false; // etapa sin configurar: no se ofrece
+  const inicio = leerFechaMenu(fila.start_date);
+  const fin = leerFechaMenu(fila.end_date);
+  if (!inicio || !fin) return false;
+  const ahora = new Date();
+  return ahora >= inicio && ahora <= fin;
 }
 
-/** Cambia un enlace del menú por su versión bloqueada con tooltip. */
-function bloquearOpcion(elemento, opciones, id_opcion, motivo) {
-  const opcion = opciones.find((o) => o.id === id_opcion);
-  const enlaceActual = opcion && elemento.querySelector(`a[href="${opcion.href}"]`);
-  if (!enlaceActual) return;
+async function estudianteTienePropuesta() {
+  try {
+    const res = await peticionApi("/propuestas/mia");
+    return res.ok; // 404 = no tiene propuesta
+  } catch {
+    return false;
+  }
+}
 
-  enlaceActual.outerHTML = construirEnlaceBloqueado(opcion, motivo);
+/** Ids de las opciones que NO deben mostrarse a este usuario. */
+async function obtenerOpcionesOcultas(usuario, opciones) {
+  const ocultas = new Set();
+  if (!usuario || usuario.rol !== "estudiante") return ocultas;
 
-  // Si Bootstrap JS está cargado en la página, tooltip inmediato y con
-  // estilo; si no, queda el tooltip nativo del atributo title.
-  if (window.bootstrap && bootstrap.Tooltip) {
-    elemento.querySelectorAll('.bloqueado[data-bs-toggle="tooltip"]').forEach((el) => {
-      bootstrap.Tooltip.getOrCreateInstance(el);
+  const ids = new Set(opciones.map((opcion) => opcion.id));
+  const necesita_fechas = Object.keys(MENU_ETAPA_POR_OPCION).some((id) => ids.has(id));
+
+  const [tiene_propuesta, filas] = await Promise.all([
+    ids.has("radicar-propuesta") ? estudianteTienePropuesta() : Promise.resolve(false),
+    necesita_fechas && usuario.id_cycle ? obtenerFechasMenu(usuario.id_cycle) : Promise.resolve(null),
+  ]);
+
+  if (tiene_propuesta) ocultas.add("radicar-propuesta");
+
+  if (filas) {
+    Object.entries(MENU_ETAPA_POR_OPCION).forEach(([id, etapa]) => {
+      if (ids.has(id) && !menuVentanaAbierta(filas, etapa)) ocultas.add(id);
     });
   }
+  return ocultas;
 }
 
 async function renderizarBarraLateral(idContenedor, paginaActiva) {
@@ -213,23 +211,16 @@ async function renderizarBarraLateral(idContenedor, paginaActiva) {
   if (!elemento) return;
 
   const usuario = typeof obtenerUsuario === "function" ? obtenerUsuario() : null;
-  const opciones = usuario ? construirMenu(usuario) : [];
+  const menu = usuario ? construirMenu(usuario) : [];
 
-  // Primera pintada: todo habilitado, para que el menú no tarde en aparecer.
-  elemento.innerHTML = `<nav class="sidebar">${opciones.map((o) => construirEnlaceMenu(o, paginaActiva)).join("")}</nav>`;
+  elemento.innerHTML = `<nav class="sidebar" aria-label="Menú principal" aria-busy="true"></nav>`;
 
-  // Candados por fecha: solo aplican a Estudiante.
-  if (!usuario || usuario.rol !== "estudiante") return;
+  // Se decide qué ocultar ANTES de pintar, para pintar el menú una sola vez.
+  const ocultas = await obtenerOpcionesOcultas(usuario, aplanarOpciones(menu));
+  const visible = filtrarMenu(menu, ocultas);
 
-  const filas_fechas = await obtenerFechasCiclo(usuario);
-
-  for (const candado of CANDADOS_POR_FECHA) {
-    if (!opciones.some((o) => o.id === candado.id_opcion)) continue;
-
-    const motivo = candado.id_opcion === "radicar-propuesta"
-      ? await obtenerBloqueoRadicarPropuesta(filas_fechas)
-      : (filas_fechas ? motivoBloqueoPorEtapa(filas_fechas, candado.etapa, candado.accion) : null);
-
-    if (motivo) bloquearOpcion(elemento, opciones, candado.id_opcion, motivo);
-  }
+  elemento.innerHTML = `
+    <nav class="sidebar" aria-label="Menú principal">
+      ${visible.map((entrada) => construirItemMenu(entrada, paginaActiva)).join("")}
+    </nav>`;
 }

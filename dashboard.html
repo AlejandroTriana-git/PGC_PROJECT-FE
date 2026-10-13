@@ -29,6 +29,12 @@
         <p class="text-muted">Este es tu panel según tu rol en la plataforma PGC.</p>
       </div>
 
+      <!-- NUEVO (Issue 12): pancarta con las etapas habilitadas o próximas -->
+      <section class="mb-4" aria-labelledby="titulo-fechas">
+        <h2 id="titulo-fechas" class="h5 mb-3" style="font-weight:800;color:var(--verde-udec);">Fechas importantes</h2>
+        <div id="contenedor-pancarta"></div>
+      </section>
+
       <div class="row g-3">
         <div class="col-md-4">
           <div class="card-resumen">
@@ -60,6 +66,8 @@
   <script src="components/navbar.js"></script>
   <script src="components/sidebar.js"></script>
   <script src="components/footer.js"></script>
+  <!-- NUEVO (Issue 12) -->
+  <script src="components/pancartaFecha.js"></script>
   <script src="js/dashboard.js"></script>
   <script>
     // "Middleware" de rutas protegidas del lado del frontend (HU-01).
@@ -70,6 +78,9 @@
     renderizarPiePagina("footer");
 
     inicializarPanel();
+
+    // NUEVO (Issue 12)
+    renderizarPancartaFechas("contenedor-pancarta");
   </script>
 </body>
 </html>

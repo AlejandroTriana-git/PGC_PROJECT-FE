@@ -27,16 +27,20 @@
       <form id="form-propuesta" class="row g-3" style="max-width: 760px;" novalidate>
 
         <div class="col-12">
+          <p class="text-muted mb-0" style="font-size:.82rem;">Todos los campos son obligatorios, excepto los integrantes.</p>
+        </div>
+
+        <div class="col-12">
           <label for="titulo" class="form-label">Título del proyecto</label>
           <input type="text" class="form-control" id="titulo">
         </div>
 
         <div class="col-12">
-          <label class="form-label">Categorías del proyecto <span class="text-danger">*</span></label>
-          <div id="lista-categorias" class="border rounded p-3">
+          <span id="etiqueta-categorias" class="form-label d-block">Categorías del proyecto <span class="text-danger" aria-hidden="true">*</span><span class="visually-hidden">(obligatorio)</span></span>
+          <div id="lista-categorias" class="border rounded p-3" role="group" aria-labelledby="etiqueta-categorias" aria-describedby="ayuda-categorias">
             <span class="text-muted fst-italic" style="font-size:.82rem;">Cargando categorías…</span>
           </div>
-          <div class="form-text">Selecciona una o más categorías que describan tu proyecto.</div>
+          <div id="ayuda-categorias" class="form-text">Selecciona una o más categorías que describan tu proyecto.</div>
         </div>
 
         <div class="col-12">
@@ -65,15 +69,15 @@
         </div>
 
         <div class="col-12">
-          <label class="form-label">Integrantes</label>
-          <div id="lista-integrantes" class="border rounded p-3"></div>
-          <div class="form-text">Solo se muestran estudiantes de tu mismo ciclo.</div>
+          <span id="etiqueta-integrantes" class="form-label d-block">Integrantes</span>
+          <div id="lista-integrantes" class="border rounded p-3" role="group" aria-labelledby="etiqueta-integrantes" aria-describedby="ayuda-integrantes"></div>
+          <div id="ayuda-integrantes" class="form-text">Solo se muestran estudiantes de tu mismo ciclo.</div>
         </div>
 
         <div class="col-12">
           <label for="pdf" class="form-label">Documento PDF</label>
-          <input type="file" class="form-control" id="pdf" accept="application/pdf">
-          <div class="form-text">Solo archivos .pdf, máximo 10 MB.</div>
+          <input type="file" class="form-control" id="pdf" accept="application/pdf" aria-describedby="ayuda-pdf">
+          <div id="ayuda-pdf" class="form-text">Solo archivos .pdf, máximo 10 MB.</div>
         </div>
 
         <div class="col-12">

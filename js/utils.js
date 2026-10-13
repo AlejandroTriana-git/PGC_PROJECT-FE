@@ -5,9 +5,8 @@
 
 // Iconos SVG reutilizados en banners de éxito/error (login,
 // formularios, tablas, etc.)
-const ICONO_ERROR = '<svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>';
-const ICONO_OK = '<svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>';
-
+const ICONO_ERROR = '<svg class="ic" aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>';
+const ICONO_OK = '<svg class="ic" aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>';
 /**
  * Escapa un texto antes de meterlo dentro de un template que se asigna
  * a innerHTML. Evita que un título como  Sistema "PGC" <b>  rompa un
@@ -31,14 +30,26 @@ function escaparHtml(texto) {
  * @param {string} idContenedor - id del elemento contenedor
  * @param {'success'|'error'} tipo
  * @param {string} mensaje
+ * @param {{ texto: string, href: string }} [enlace]
  */
-function mostrarBanner(idContenedor, tipo, mensaje) {
+function mostrarBanner(idContenedor, tipo, mensaje, enlace) {
   const banner = document.getElementById(idContenedor);
   if (!banner) return;
   banner.className = "banner " + tipo;
+  // Los errores se anuncian de inmediato (alert); los éxitos, sin interrumpir (status).
+  banner.setAttribute("role", tipo === "error" ? "alert" : "status");
   banner.innerHTML = tipo === "error" ? ICONO_ERROR : ICONO_OK;
   const texto = document.createElement("span");
   texto.textContent = mensaje;
+  if (enlace) {
+    texto.appendChild(document.createTextNode(" "));
+    const vinculo = document.createElement("a");
+    vinculo.href = enlace.href;
+    vinculo.textContent = enlace.texto;
+    vinculo.style.color = "inherit";
+    vinculo.style.fontWeight = "700";
+    texto.appendChild(vinculo);
+  }
   banner.appendChild(texto);
 }
 
@@ -134,4 +145,89 @@ function renderEnlacePdf(contenedor, pdf, etiqueta = "📄 Ver documento PDF") {
       ${etiqueta}
     </a>
     <span class="text-muted ms-2" style="font-size:.75rem;">(${textoExpira})</span>`;
+}
+
+
+
+// ============================================================
+// Piezas de interfaz reutilizables (Issues 7 y 11). Las usan miPgc.js
+// y, cuando rediseñemos esa pantalla, mis-propuestas.js.
+// ============================================================
+
+/** Un dato: etiqueta con icono decorativo (no lo lee el lector de pantalla) + contenido ya armado. */
+function bloqueCampo(icono, etiqueta, contenido_html) {
+  return `
+    <div class="campo-bloque">
+      <span class="campo-etiqueta"><span aria-hidden="true">${icono}</span>${escaparHtml(etiqueta)}</span>
+      ${contenido_html}
+    </div>`;
+}
+
+/** Un dato de texto largo; "—" si viene vacío. */
+function bloqueTexto(icono, etiqueta, texto) {
+  const contenido = String(texto ?? "").trim() ? escaparHtml(texto) : "—";
+  return bloqueCampo(icono, etiqueta, `<p class="campo-texto">${contenido}</p>`);
+}
+
+/** Lista de etiquetas cortas (categorías, integrantes). `vacio` es el texto si no hay nada. */
+function listaChips(textos, vacio) {
+  if (!Array.isArray(textos) || textos.length === 0) {
+    return `<p class="campo-texto text-muted">${escaparHtml(vacio)}</p>`;
+  }
+  return `<ul class="lista-chips">${textos.map((t) => `<li class="chip-dato">${escaparHtml(t)}</li>`).join("")}</ul>`;
+}
+
+/**
+ * Valida un formulario campo por campo (WCAG 3.3.1: el error debe decir
+ * CUÁL campo falló). Marca cada campo con error, lo anuncia en el banner y
+ * lleva el foco al primero.
+ *
+ * @param {Array<{ id: string, error: string|null }>} campos - en el orden de la
+ *   pantalla; `error` es el mensaje si el campo falla, o null si está bien.
+ *   El id puede ser el de un control (input, textarea, select) o el de un
+ *   contenedor de casillas (en ese caso el foco va a su primer control).
+ * @param {string} idBanner - banner donde se muestran los mensajes.
+ * @returns {boolean} true si todos los campos están bien.
+ */
+function validarCampos(campos, idBanner) {
+  let primero = null;
+  const mensajes = [];
+
+  campos.forEach(({ id, error }) => {
+    const elemento = document.getElementById(id);
+    if (!elemento) return;
+    const es_control = elemento.matches("input, textarea, select");
+
+    // Se limpian las marcas anteriores, para que un campo corregido deje de verse en error.
+    elemento.classList.remove("is-invalid", "border-danger");
+    elemento.removeAttribute("aria-invalid");
+
+    if (!error) return;
+
+    if (es_control) {
+      elemento.classList.add("is-invalid");
+      elemento.setAttribute("aria-invalid", "true");
+    } else {
+      elemento.classList.add("border-danger"); // contenedor de casillas
+    }
+    mensajes.push(error);
+    if (!primero) primero = es_control ? elemento : elemento.querySelector("input, textarea, select, button") || elemento;
+  });
+
+  if (mensajes.length === 0) return true;
+
+  mostrarBanner(idBanner, "error", mensajes.join(" "));
+  if (primero && typeof primero.focus === "function") primero.focus();
+  return false;
+}
+
+/**
+ * Lleva el foco al banner (WCAG 2.4.3). Se usa tras repintar la pantalla:
+ * el botón que el usuario pulsó ya no existe y, sin esto, el foco se pierde.
+ */
+function enfocarBanner(idContenedor) {
+  const banner = document.getElementById(idContenedor);
+  if (!banner) return;
+  banner.setAttribute("tabindex", "-1");
+  banner.focus();
 }

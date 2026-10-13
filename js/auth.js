@@ -145,6 +145,35 @@ function cerrarSesion(mensaje) {
   window.location.href = destino;
 }
 
+
+/**
+ * Cierre de sesión pedido por el usuario (botón "Cerrar sesión").
+ * Primero invalida el token en el servidor (blacklist) y SIEMPRE termina
+ * limpiando el token local y yendo al login, incluso si la petición falla
+ * (sin red, token ya vencido, endpoint no disponible): el usuario nunca
+ * debe quedarse atrapado en una sesión que quiso cerrar.
+ *
+ * Usa fetch directo y no peticionApi: ante un 401, peticionApi llama a
+ * cerrarSesion() y eso sería un bucle. Para los cierres forzados (sesión
+ * vencida, ruta protegida) se sigue usando cerrarSesion(), que no avisa al
+ * servidor porque ese token ya no sirve.
+ */
+async function cerrarSesionUsuario() {
+  const token = obtenerToken();
+  if (token) {
+    try {
+      await fetch(`${URL_API}/auth/logout`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    } catch {
+      // Sin conexión: igual se cierra la sesión localmente.
+    }
+  }
+  cerrarSesion();
+}
+
+
 /**
  * "Middleware" de rutas protegidas del lado del frontend.
  * Se llama al inicio de cada página que requiera sesión
