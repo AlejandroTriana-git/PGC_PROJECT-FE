@@ -30,8 +30,16 @@ const PESTANAS_PGC = [
   { id: "calificacion", etiqueta: "Calificación" },
 ];
 
+// Estado del PGC en el que ya no se permite subir, reemplazar ni eliminar archivos.
+const ESTADO_TERMINADO = "Terminado";
+
 // El PGC cargado, para no volver a pedirlo al subir/reemplazar cada archivo.
 let pgc_actual = null;
+
+/** true si el PGC ya está terminado (el backend también lo bloquea). */
+function pgcTerminado() {
+  return Boolean(pgc_actual) && (pgc_actual.estado ?? pgc_actual.state_pgc) === ESTADO_TERMINADO;
+}
 
 // Pestaña abierta: sobrevive a los repintados (subir, reemplazar, eliminar).
 let pestana_activa = "resumen";
@@ -98,6 +106,9 @@ function pintarArchivosPgc(archivos) {
     return;
   }
 
+  // Con el PGC terminado los archivos quedan de solo lectura: sin Reemplazar/Eliminar.
+  const solo_lectura = pgcTerminado();
+
   // El BE (mapearArchivoParaFrontend) devuelve:
   //   { id_file, title_file, desc_file, url_file: { url, expira_en_segundos } }
   contenedor.innerHTML = `
@@ -119,7 +130,7 @@ function pintarArchivosPgc(archivos) {
                 ${escaparHtml(archivo.desc_file)}
               </p>
             </div>
-            <div class="d-flex gap-2">
+            ${solo_lectura ? "" : `<div class="d-flex gap-2">
               <button type="button" class="btn btn-sm btn-outline-primary" id="btn-reemplazar-${archivo.id_file}"
                       aria-label="Reemplazar ${titulo}"
                       onclick="toggleFormularioReemplazo(${archivo.id_file}, true)">
@@ -130,10 +141,10 @@ function pintarArchivosPgc(archivos) {
                       onclick="eliminarArchivoPgc(${archivo.id_file})">
                 Eliminar
               </button>
-            </div>
+            </div>`}
           </div>
 
-          <form id="form-reemplazo-${archivo.id_file}" class="row g-2 mt-2 hidden" novalidate
+          ${solo_lectura ? "" : `<form id="form-reemplazo-${archivo.id_file}" class="row g-2 mt-2 hidden" novalidate
                 onsubmit="reemplazarArchivoPgc(${archivo.id_file}); return false;">
             <div class="col-12 col-md-4">
               <label for="titulo-reemplazo-${archivo.id_file}" class="form-label">Título</label>
@@ -151,7 +162,7 @@ function pintarArchivosPgc(archivos) {
               <button type="submit" class="btn btn-sm btn-primary">Guardar cambios</button>
               <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleFormularioReemplazo(${archivo.id_file}, false)">Cancelar</button>
             </div>
-          </form>
+          </form>`}
         </li>`;
         })
         .join("")}
@@ -179,7 +190,7 @@ function formatearNota(valor) {
  * Pinta la sección de calificaciones. Las notas viven aquí y no en la ficha
  * pública (fichaPgc.html), que cualquier usuario puede abrir con el id de otro PGC.
  *
- * Contrato de GET /pgc/:id_pgc/grades (lo define el frontend):
+ * Contrato de GET /pgc/:id_pgc/calificaciones (backend):
  *   { nota_global: 4.3 | null, calificaciones: [{ juror_name, grade, comment, graded_at }] }
  * Si nadie ha calificado: nota_global null y calificaciones [].
  * pgc_actual.notas vale null cuando la petición falló.
@@ -308,7 +319,11 @@ function pintarPgc() {
 
     <div id="banner-archivo" class="banner hidden"></div>
 
-    <form id="form-subir-archivo" class="row g-2 border rounded p-3 bg-white" novalidate>
+    ${pgcTerminado()
+      ? `<div class="banner success" role="status">
+           <span>Tu PGC está <strong>terminado</strong>: ya no se pueden subir, reemplazar ni eliminar archivos.</span>
+         </div>`
+      : `<form id="form-subir-archivo" class="row g-2 border rounded p-3 bg-white" novalidate>
       <div class="col-12">
         <h4 class="h6 mb-0" style="font-weight:800;color:var(--verde-udec);">Subir nueva evidencia</h4>
         <p class="text-muted mb-0" style="font-size:.78rem;">Todos los campos son obligatorios.</p>
@@ -329,7 +344,7 @@ function pintarPgc() {
         <button type="submit" class="btn btn-primary" id="btn-subir-archivo">Subir archivo</button>
         <div id="ayuda-archivo-pgc" class="form-text">PDF, Word, Excel, PowerPoint o imágenes — máximo 10 MB.</div>
       </div>
-    </form>
+    </form>`}
 
     <hr class="my-4">
 
@@ -376,13 +391,20 @@ function pintarPgc() {
     });
   });
 
-  document.getElementById("form-subir-archivo").addEventListener("submit", subirArchivoPgc);
+  // El formulario de subida solo existe si el PGC no está terminado.
+  const form_subir = document.getElementById("form-subir-archivo");
+  if (form_subir) form_subir.addEventListener("submit", subirArchivoPgc);
 }
 
 /** Envía el nuevo archivo (con título y descripción) a POST /pgc/:id/files. */
 async function subirArchivoPgc(evento) {
   evento.preventDefault();
   ocultarBanner("banner-archivo");
+
+  if (pgcTerminado()) {
+    mostrarBanner("banner-archivo", "error", "Tu PGC ya está terminado, no se pueden subir más archivos.");
+    return;
+  }
 
   const titulo = document.getElementById("titulo-archivo").value.trim();
   const descripcion = document.getElementById("descripcion-archivo").value.trim();
@@ -437,6 +459,7 @@ async function subirArchivoPgc(evento) {
  */
 async function reemplazarArchivoPgc(id_file) {
   ocultarBanner("banner-archivo");
+  if (pgcTerminado()) return;
 
   const titulo = document.getElementById(`titulo-reemplazo-${id_file}`).value.trim();
   const descripcion = document.getElementById(`descripcion-reemplazo-${id_file}`).value.trim();
@@ -484,6 +507,7 @@ async function reemplazarArchivoPgc(id_file) {
 
 /** Elimina un archivo de evidencia vía DELETE /pgc/:id/files/:idArchivo, con confirmación. */
 async function eliminarArchivoPgc(id_file) {
+  if (pgcTerminado()) return;
   if (!confirm("¿Seguro que quieres eliminar este archivo? Esta acción no se puede deshacer.")) return;
 
   const fila = document.getElementById(`fila-archivo-${id_file}`);
@@ -543,7 +567,7 @@ async function inicializarMiPgc() {
 
   const [archivos, notas, pdf_propuesta] = await Promise.all([
     pedir(`/pgc/${pgc_actual.id_pgc}/files`),
-    pedir(`/pgc/${pgc_actual.id_pgc}/grades`),
+    pedir(`/pgc/${pgc_actual.id_pgc}/calificaciones`),
     // El PDF original necesita id_proposal en la respuesta de /pgc/mine (pendiente con BE).
     pgc_actual.id_proposal ? pedir(`/propuestas/${pgc_actual.id_proposal}/pdf`) : Promise.resolve(null),
   ]);

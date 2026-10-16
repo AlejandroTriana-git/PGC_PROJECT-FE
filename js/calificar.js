@@ -6,11 +6,14 @@
 // lo validan del lado del servidor).
 //
 // Al abrir el modal se pide la ficha completa (GET /pgc/:id_pgc,
-// la misma de HU-05) + los archivos de evidencia (GET /pgc/:id_pgc/files)
-// + el PDF de la propuesta original (GET /propuestas/:id_proposal/pdf).
-// Este último depende de que la ficha incluya id_proposal — si
-// backend todavía no lo agrega, esa sección se omite sin romper
-// el resto (ver pintarDetallePgc).
+// la misma de HU-05), que ya trae los archivos de evidencia en
+// `archivos` (GET /pgc/:id/files es solo para el equipo y al jurado
+// le responde 403), + el PDF de la propuesta original
+// (GET /propuestas/:id_proposal/pdf, permitido también al jurado).
+//
+// Rutas del backend (en español):
+//   GET  /pgc/pendientes-calificacion
+//   POST /pgc/:id_pgc/calificar
 // ============================================================
 
 const ETAPA_CALIFICACION = "Calificación"; // literal exacto del ENUM, con tilde
@@ -182,12 +185,10 @@ async function abrirCalificacion(id_pgc) {
   modal_calificar.show();
 
   try {
-    const [res_ficha, res_archivos] = await Promise.all([
-      peticionApi(`/pgc/${id_pgc}`),
-      peticionApi(`/pgc/${id_pgc}/files`),
-    ]);
+    // La ficha ya trae los archivos del PGC con su url firmada.
+    const res_ficha = await peticionApi(`/pgc/${id_pgc}`);
     const ficha = res_ficha.ok ? await res_ficha.json() : null;
-    const archivos_pgc = res_archivos.ok ? await res_archivos.json() : [];
+    const archivos_pgc = ficha && Array.isArray(ficha.archivos) ? ficha.archivos : [];
 
     if (!ficha) {
       document.getElementById("cuerpo-detalle-pgc").innerHTML = `<p class="text-muted fst-italic">No fue posible cargar la información del PGC.</p>`;
@@ -203,7 +204,7 @@ async function inicializarCalificar() {
   modal_calificar = new bootstrap.Modal(document.getElementById("modal-calificar"));
 
   try {
-    const res = await peticionApi("/pgc/pending-grading");
+    const res = await peticionApi("/pgc/pendientes-calificacion");
     if (!res.ok) throw new Error();
     pgc_pendientes = await res.json();
   } catch {
@@ -233,7 +234,7 @@ async function inicializarCalificar() {
     boton.textContent = "Guardando...";
 
     try {
-      const res = await peticionApi(`/pgc/${pgc_seleccionado.id_pgc}/grade`, {
+      const res = await peticionApi(`/pgc/${pgc_seleccionado.id_pgc}/calificar`, {
         method: "POST",
         body: JSON.stringify({ grade: Number(nota), comment: comentario }),
       });

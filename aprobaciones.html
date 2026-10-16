@@ -62,34 +62,9 @@
           <p><strong>Solución propuesta:</strong> <span id="detalle-solucion" style="white-space:pre-wrap;"></span></p>
           <p id="detalle-pdf-contenedor"></p>
 
-          <div id="zona-rechazo" class="hidden mt-3">
-            <label for="comentario-rechazo" class="form-label">Comentario (obligatorio para rechazar)</label>
-            <textarea class="form-control" id="comentario-rechazo" rows="3"></textarea>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-outline-primary" id="btn-mostrar-rechazo">Rechazar</button>
-          <button type="button" class="btn btn-danger d-none" id="btn-confirmar-rechazo">Confirmar rechazo</button>
-          <button type="button" class="btn btn-primary" id="btn-aprobar">Aprobar</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="js/config.js"></script>
-  <script src="js/utils.js"></script>
-  <script src="js/auth.js"></script>
-  <script src="components/navbar.js"></script>
-  <script src="components/sidebar.js"></script>
-  <script src="components/footer.js"></script>
-  <script src="js/aprobaciones.js"></script>
-  <script>
-    requerirCapacidad("encargado");
-    renderizarBarraSuperior("topbar");
-    renderizarBarraLateral("sidebar", "aprobaciones");
-    renderizarPiePagina("footer");
-    inicializarAprobaciones();
-  </script>
-</body>
-</html>
+          <!-- Confirmación de aprobación: aprobar no se puede deshacer -->
+          <div id="zona-confirmar-aprobacion" class="hidden mt-3 p-3 border rounded" role="alert">
+            <p class="mb-1"><strong>¿Seguro que deseas aprobar esta propuesta?</strong></p>
+            <p class="mb-0 text-muted" style="font-size:.85rem;">
+              Al aprobarla, el equipo podrá registrar su PGC. Esta acción no se puede deshacer.
+            </p>
