@@ -1,7 +1,7 @@
 /* ============================================================
    DASHBOARD.CSS — estilos EXCLUSIVOS de dashboard.html.
-   El layout de topbar/sidebar/footer ya vive en global.css;
-   aquí solo van las tarjetas de resumen propias de esta vista.
+   El layout de topbar/sidebar/footer y .card-resumen ya viven en
+   global.css; aquí solo va lo propio del Inicio.
    ============================================================ */
 
 .page-head h1 {
@@ -10,24 +10,65 @@
   color: var(--verde-medio);
 }
 
-.card-resumen {
-  background: #fff;
-  border-radius: var(--bs-border-radius-lg);
-  padding: 1.2rem 1.4rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, .06);
-  display: flex;
-  flex-direction: column;
-  gap: .3rem;
+/* Título de cada sección del Inicio */
+.titulo-panel {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--verde-udec);
+  margin-bottom: .75rem;
 }
-.card-resumen .label {
-  font-size: .78rem;
-  font-weight: 700;
-  color: var(--gris);
-  text-transform: uppercase;
-  letter-spacing: .02em;
-}
+
+/* Tarjetas de resumen: mismas alturas en la fila */
+.card-resumen { height: 100%; }
 .card-resumen .valor {
   font-size: 1.8rem;
   font-weight: 800;
   color: var(--verde-medio);
+  line-height: 1.15;
 }
+.card-resumen .valor-badge {
+  align-self: flex-start;
+  font-size: .85rem;
+  margin: .2rem 0;
+}
+.card-resumen .detalle {
+  font-size: .82rem;
+  color: var(--gris);
+}
+
+/* Tarjeta que es enlace: se resalta al pasar o enfocar */
+.card-enlace {
+  text-decoration: none;
+  color: inherit;
+  border: 1px solid transparent;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.card-enlace:hover,
+.card-enlace:focus-visible {
+  border-color: #007B3E55;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .08);
+  color: inherit;
+}
+
+/* Accesos rápidos */
+.acceso-rapido {
+  display: flex;
+  flex-direction: column;
+  gap: .25rem;
+  height: 100%;
+  background: #fff;
+  border: 1px solid #E3E8E4;
+  border-left: 4px solid var(--verde-medio);
+  border-radius: var(--bs-border-radius-lg);
+  padding: .85rem 1rem;
+  text-decoration: none;
+  color: inherit;
+  transition: background .15s ease;
+}
+.acceso-rapido:hover,
+.acceso-rapido:focus-visible {
+  background: #007B3E0D;
+  color: inherit;
+}
+.acceso-titulo { font-weight: 700; color: var(--verde-udec); }
+.acceso-texto  { font-size: .82rem; color: var(--gris); }

@@ -96,8 +96,10 @@ async function peticionApi(ruta, opciones = {}) {
   );
   const res = await fetch(`${URL_API}${ruta}`, { ...opciones, headers: encabezados });
 
-  // Sesión vencida o inválida: el backend responde 401.
-  if (res.status === 401) {
+  // Sesión vencida o inválida: el backend responde 401. Solo se cierra la
+  // sesión si había token: un visitante en una página pública (buscar PGC)
+  // no tiene sesión que cerrar y no debe ser expulsado al login.
+  if (res.status === 401 && token) {
     cerrarSesion("Sesión expirada. Por favor, inicie sesión nuevamente.");
     throw new Error("No autenticado");
   }

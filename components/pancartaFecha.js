@@ -33,6 +33,19 @@ function pancartaFormatear(fecha) {
   return fecha.toLocaleDateString("es-CO", { day: "numeric", month: "long", year: "numeric" });
 }
 
+/** Mapa id_cycle → nombre del ciclo ("Fundamentación"...), para no mostrar solo números. */
+async function pancartaNombresCiclo() {
+  try {
+    const res = await peticionApi("/ciclos");
+    if (!res.ok) return {};
+    const nombres = {};
+    (await res.json()).forEach((ciclo) => { nombres[ciclo.id] = ciclo.subject_cycle; });
+    return nombres;
+  } catch {
+    return {};
+  }
+}
+
 /** Ciclos y etapas que le interesan a este usuario: Map(id_cycle → Set(etapas)). */
 async function pancartaObtenerObjetivos(usuario) {
   const objetivos = new Map();
@@ -44,11 +57,15 @@ async function pancartaObtenerObjetivos(usuario) {
   if (usuario.rol === "estudiante") {
     if (usuario.id_cycle) agregar(usuario.id_cycle, ["Radicación", "Registro PGC", "Sustentación"]);
   } else if (usuario.rol === "profesor") {
-    usuario.encargado_de.forEach((id) => agregar(id, PANCARTA_TODAS));
-    usuario.jurado_de.forEach((id) => agregar(id, ["Sustentación", "Calificación"]));
+    // Solo las fechas del "sombrero" activo; en el contexto Profesor se ven ambas.
+    const contexto = typeof obtenerContextoActivo === "function" ? obtenerContextoActivo() : "profesor";
+    if (contexto !== "jurado") usuario.encargado_de.forEach((id) => agregar(id, PANCARTA_TODAS));
+    if (contexto !== "encargado") usuario.jurado_de.forEach((id) => agregar(id, ["Sustentación", "Calificación"]));
   } else if (usuario.rol === "administrador") {
+    // GET /ciclos devuelve { id, subject_cycle, ... } (contrato del API), no id_cycle:
+    // antes se leía ciclo.id_cycle y el administrador nunca veía fechas.
     const res = await peticionApi("/ciclos");
-    if (res.ok) (await res.json()).forEach((ciclo) => agregar(ciclo.id_cycle, PANCARTA_TODAS));
+    if (res.ok) (await res.json()).forEach((ciclo) => agregar(ciclo.id, PANCARTA_TODAS));
   }
   return objetivos;
 }
@@ -131,13 +148,15 @@ async function renderizarPancartaFechas(idContenedor) {
   items.sort((a, b) => (a.tipo === b.tipo ? a.inicio - b.inicio : a.tipo === "habilitada" ? -1 : 1));
 
   const mostrar_ciclo = objetivos.size > 1;
+  const nombres_ciclo = mostrar_ciclo ? await pancartaNombresCiclo() : {};
 
   contenedor.innerHTML = `
     <ul class="pancarta-lista">
       ${items
         .map((item) => {
           const etiqueta = item.tipo === "habilitada" ? "Disponible ahora" : "Próximamente";
-          const prefijo = mostrar_ciclo ? `<strong>Ciclo ${escaparHtml(item.id_cycle)}.</strong> ` : "";
+          const nombre_ciclo = nombres_ciclo[item.id_cycle] || `Ciclo ${item.id_cycle}`;
+          const prefijo = mostrar_ciclo ? `<strong>${escaparHtml(nombre_ciclo)}.</strong> ` : "";
           return `
           <li class="pancarta pancarta-${item.tipo}">
             <span class="pancarta-estado">${etiqueta}</span>

@@ -65,6 +65,44 @@ function crearListaDocumento(config) {
     return null;
   }
 
+  /**
+   * Campo de versión con la "V" fija (no editable): el usuario solo escribe
+   * el número (1, 1.0, 2.1...) y al guardar se envía "V" + número.
+   */
+  function campoVersion(id, sugerencia) {
+    //aca el campo ya viene lleno con la siguiente version (se puede cambiar si hace falta)
+    return `
+      <div class="input-group">
+        <span class="input-group-text" aria-hidden="true">V</span>
+        <input type="text" class="form-control" id="${id}" name="version" inputmode="decimal"
+               value="${escaparHtml(sugerencia)}" data-sugerida="${escaparHtml(sugerencia)}"
+               aria-describedby="${id}-ayuda" autocomplete="off">
+      </div>
+      <span id="${id}-ayuda" class="visually-hidden">Se llena sola con la siguiente versión; la V se agrega sola.</span>`;
+  }
+
+  /** Sugerencia de la siguiente versión a partir de la vigente ("V2.0" → "3.0"). */
+  function siguienteVersion(version_actual) {
+    const numero = String(version_actual ?? "").replace(/^v\s*/i, "");
+    const mayor = parseInt(numero, 10);
+    if (Number.isNaN(mayor)) return "1.0";
+    const tiene_decimal = numero.includes(".");
+    return tiene_decimal ? `${mayor + 1}.0` : String(mayor + 1);
+  }
+
+  /**
+   * Toma lo que escribió el usuario y devuelve { version, error }.
+   * Si pegó la V por costumbre ("v2"), se la quita para no guardar "VV2".
+   */
+  function leerVersion(texto) {
+    const numero = String(texto ?? "").trim().replace(/^v\s*/i, "");
+    if (!numero) return { version: null, error: "La versión es obligatoria." };
+    if (!/^\d+(\.\d+)*$/.test(numero)) {
+      return { version: null, error: "La versión debe ser un número, por ejemplo 1.0 o 2." };
+    }
+    return { version: `V${numero}`, error: null };
+  }
+
   function formatearFecha(valor) {
     const fecha = new Date(valor);
     return Number.isNaN(fecha.getTime()) ? "" : fecha.toLocaleDateString("es-CO");
@@ -127,7 +165,7 @@ function crearListaDocumento(config) {
           </div>
           <div class="col-6 col-md-2">
             <label for="${prefijo}-version-nuevo" class="form-label">Versión</label>
-            <input type="text" class="form-control" id="${prefijo}-version-nuevo" name="version" placeholder="V1">
+            ${campoVersion(`${prefijo}-version-nuevo`, "1.0")}
           </div>
           <div class="col-6 col-md-2">
             <label for="${prefijo}-pdf-nuevo" class="form-label">PDF</label>
@@ -182,7 +220,7 @@ function crearListaDocumento(config) {
                    </div>
                    <div class="col-6 col-md-2">
                      <label for="${base}-version" class="form-label">Nueva versión</label>
-                     <input type="text" class="form-control" id="${base}-version" name="version" placeholder="V2">
+                     ${campoVersion(`${base}-version`, siguienteVersion(doc.version_label))}
                    </div>
                    <div class="col-6 col-md-2">
                      <label for="${base}-pdf" class="form-label">PDF</label>
@@ -281,6 +319,9 @@ function crearListaDocumento(config) {
       zona_lista.querySelector(`form[data-form="actualizar"][data-id="${id}"]`).classList.remove("hidden");
       control.classList.add("hidden");
     } else if (accion === "cancelar-actualizar") {
+      //al cancelar se devuelve la version a la sugerida, por si la habian cambiado
+      const campo = zona_lista.querySelector(`form[data-form="actualizar"][data-id="${id}"] [name="version"]`);
+      if (campo) campo.value = campo.dataset.sugerida || "";
       zona_lista.querySelector(`form[data-form="actualizar"][data-id="${id}"]`).classList.add("hidden");
       zona_lista.querySelector(`[data-accion="mostrar-actualizar"][data-id="${id}"]`).classList.remove("hidden");
     } else if (accion === "historial") {
@@ -297,7 +338,7 @@ function crearListaDocumento(config) {
     const boton = form.querySelector('button[type="submit"]');
     const texto_boton = boton.textContent;
     const descripcion = form.elements["descripcion"].value.trim();
-    const version = form.elements["version"].value.trim();
+    const { version, error: error_version } = leerVersion(form.elements["version"].value);
     const archivo = form.elements["archivo"].files[0];
 
     let titulo;
@@ -314,8 +355,9 @@ function crearListaDocumento(config) {
       titulo = doc.title_file;
     }
 
-    if (!version) {
-      mostrarBanner(config.idBanner, "error", "La versión es obligatoria.");
+    if (error_version) {
+      mostrarBanner(config.idBanner, "error", error_version);
+      form.elements["version"].focus();
       return;
     }
     const error_pdf = validarPdf(archivo);

@@ -2,6 +2,11 @@
 // FICHAPGC.JS — HU-05: ficha de solo lectura de un PGC del
 // catálogo general. Recibe el id por la URL (?id=...).
 //
+// Es PÚBLICA (se puede ver sin sesión) y usa el mismo diseño de
+// "Mi PGC" / "Mi propuesta": cabecera + descripción a la izquierda +
+// datos generales a la derecha, con las piezas de utils.js
+// (bloqueCampo, bloqueTexto, listaChips).
+//
 // Restricción de negocio: esta vista NUNCA debe mostrar nota ni
 // comentarios de jurado — el backend confirmó que GET /pgc/:id no
 // los incluye en la respuesta (eso es exclusivo de HU-07, con su
@@ -9,16 +14,14 @@
 // propósito: esos campos simplemente no existen en este JSON.
 // ============================================================
 
-/** Arma las categorías como texto simple (ya escapado). */
-function nombresCategoriasFicha(categorias) {
-  if (!Array.isArray(categorias) || categorias.length === 0) return "Sin categorías";
-  return categorias.map((c) => escaparHtml(typeof c === "object" ? c.name_category : c)).join(", ");
+/** Textos de las categorías (vienen como objetos { name_category } o como texto). */
+function textosCategoriasFicha(categorias) {
+  return Array.isArray(categorias) ? categorias.map((c) => (typeof c === "object" ? c.name_category : c)) : [];
 }
 
-/** Arma los nombres de integrantes como texto simple (ya escapado). */
-function nombresIntegrantesFicha(integrantes) {
-  if (!Array.isArray(integrantes) || integrantes.length === 0) return "Solo el líder";
-  return integrantes.map((i) => escaparHtml(typeof i === "object" ? i.full_name : i)).join(", ");
+/** Textos de los integrantes (vienen como objetos { full_name } o como texto). */
+function textosIntegrantesFicha(integrantes) {
+  return Array.isArray(integrantes) ? integrantes.map((i) => (typeof i === "object" ? i.full_name : i)) : [];
 }
 
 /**
@@ -40,7 +43,7 @@ function seccionArchivosFicha(archivos) {
         <li class="list-group-item">
           <p style="margin:0;font-weight:600;">${escaparHtml(a.title_file)}</p>
           ${a.desc_file ? `<p class="text-muted mb-1" style="font-size:.82rem;white-space:pre-wrap;">${escaparHtml(a.desc_file)}</p>` : ""}
-          <div id="enlace-archivo-${a.id_file}"></div>
+          <div id="enlace-archivo-${escaparHtml(a.id_file)}"></div>
         </li>`
         )
         .join("")}
@@ -60,67 +63,69 @@ function pintarEnlacesArchivos(archivos) {
 
 function pintarFicha(p) {
   const contenedor = document.getElementById("contenedor-ficha");
+  const ciclo = p.name_cycle ?? p.id_cycle;
+  const texto_ciclo = ciclo === undefined || ciclo === null ? "" : /^\d+$/.test(String(ciclo)) ? `Ciclo ${ciclo}` : String(ciclo);
+
+  document.title = `UDEC PGC — ${p.title_proposal || "Ficha de proyecto"}`;
 
   contenedor.innerHTML = `
-    <div class="card-resumen">
-
-      <span class="label">Título</span>
-      <h2 style="font-size:1.2rem;font-weight:700;color:var(--verde-udec);">${escaparHtml(p.title_proposal)}</h2>
-
-      <div class="mt-2 mb-3">
-        <span class="badge-estado ${p.estado === "Terminado" ? "aprobada" : "pendiente"}">${escaparHtml(p.estado)}</span>
+    <div class="pgc-cabecera">
+      <span class="label">Proyecto de grado</span>
+      <h2>${escaparHtml(p.title_proposal)}</h2>
+      <div class="pgc-cabecera-meta">
+        ${texto_ciclo ? `<span class="chip-dato">${escaparHtml(texto_ciclo)}</span>` : ""}
+        ${p.estado ? `<span class="badge-estado ${p.estado === "Terminado" ? "aprobada" : "pendiente"}">${escaparHtml(p.estado)}</span>` : ""}
       </div>
+    </div>
 
-      <div style="display:grid;gap:.75rem;">
-        <div>
-          <span class="label">Ciclo</span>
-          <p style="margin:0;">${escaparHtml(p.name_cycle ?? p.id_cycle ?? "—")}</p>
-        </div>
-        <div>
-          <span class="label">Problema</span>
-          <p style="margin:0;white-space:pre-wrap;">${escaparHtml(p.problem_proposal)}</p>
-        </div>
-        <div>
-          <span class="label">Justificación</span>
-          <p style="margin:0;white-space:pre-wrap;">${escaparHtml(p.justification_proposal)}</p>
-        </div>
-        <div>
-          <span class="label">Objetivos</span>
-          <p style="margin:0;white-space:pre-wrap;">${escaparHtml(p.objectives_proposal)}</p>
-        </div>
-        <div>
-          <span class="label">Solución propuesta</span>
-          <p style="margin:0;white-space:pre-wrap;">${escaparHtml(p.solution_proposal)}</p>
-        </div>
-        <div>
-          <span class="label">Categorías</span>
-          <p style="margin:0;">${nombresCategoriasFicha(p.categorias)}</p>
-        </div>
-        <div>
-          <span class="label">Integrantes</span>
-          <p style="margin:0;">${nombresIntegrantesFicha(p.integrantes)}</p>
-        </div>
-        ${
-          p.id_pgc_previous
-            ? `<div>
-                <span class="label">Continuidad</span>
-                <p style="margin:0;"><a href="fichaPgc.html?id=${p.id_pgc_previous}">Ver PGC anterior (ciclo previo) →</a></p>
-              </div>`
-            : ""
-        }
-        <div>
-          <span class="label">Archivos</span>
-          ${seccionArchivosFicha(p.archivos)}
+    <div class="row g-4">
+      <div class="col-lg-8">
+        <h3 class="titulo-seccion">Descripción del proyecto</h3>
+        <div class="d-grid gap-3">
+          ${bloqueTexto("🧩", "Problema", p.problem_proposal)}
+          ${bloqueTexto("💡", "Justificación", p.justification_proposal)}
+          ${bloqueTexto("🎯", "Objetivos", p.objectives_proposal)}
+          ${bloqueTexto("🛠️", "Solución propuesta", p.solution_proposal)}
         </div>
       </div>
-
+      <div class="col-lg-4">
+        <h3 class="titulo-seccion">Datos generales</h3>
+        <div class="d-grid gap-3">
+          ${bloqueCampo("🏷️", "Categorías", listaChips(textosCategoriasFicha(p.categorias), "Sin categorías"))}
+          ${bloqueCampo("👥", "Integrantes", listaChips(textosIntegrantesFicha(p.integrantes), "Solo el líder"))}
+          ${
+            p.id_pgc_previous
+              ? bloqueCampo(
+                  "🔗",
+                  "Continuidad",
+                  `<p class="campo-texto"><a href="fichaPgc.html?id=${encodeURIComponent(p.id_pgc_previous)}">Ver PGC anterior (ciclo previo) →</a></p>`
+                )
+              : ""
+          }
+          ${bloqueCampo("📎", "Archivos", seccionArchivosFicha(p.archivos))}
+        </div>
+      </div>
     </div>
   `;
 
   pintarEnlacesArchivos(p.archivos);
 }
 
+/** "Volver" regresa a la búsqueda con sus filtros si venimos de ahí. */
+function prepararEnlaceVolver() {
+  const enlace = document.getElementById("enlace-volver");
+  if (!enlace) return;
+  try {
+    const anterior = new URL(document.referrer);
+    if (anterior.origin === window.location.origin && anterior.pathname.endsWith("buscarPgc.html")) {
+      enlace.href = `buscarPgc.html${anterior.search}`;
+    }
+  } catch { /* sin referrer: se queda en buscarPgc.html */ }
+}
+
 async function inicializarFichaPgc() {
+  prepararEnlaceVolver();
+
   const contenedor = document.getElementById("contenedor-ficha");
   const id_pgc = new URLSearchParams(window.location.search).get("id");
 
@@ -129,8 +134,10 @@ async function inicializarFichaPgc() {
     return;
   }
 
+  contenedor.innerHTML = `<p class="text-muted fst-italic">Cargando ficha del proyecto...</p>`;
+
   try {
-    const res = await peticionApi(`/pgc/${id_pgc}`);
+    const res = await peticionApi(`/pgc/${encodeURIComponent(id_pgc)}`);
     if (res.status === 404) {
       contenedor.innerHTML = `<p class="text-muted fst-italic">Ese proyecto no existe.</p>`;
       return;

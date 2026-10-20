@@ -35,6 +35,9 @@
   --bs-border-radius-lg: 12px;
   --bs-link-color: var(--verde-medio);
   --bs-link-hover-color: var(--verde-udec);
+  /* Bootstrap pinta los enlaces con las variables -rgb: sin ellas salían azules */
+  --bs-link-color-rgb: 0, 123, 62;
+  --bs-link-hover-color-rgb: 0, 72, 43;
 }
 
 * { box-sizing: border-box; }
@@ -472,3 +475,76 @@ main:focus { outline: none; }
   padding: 1rem 1.25rem;
 }
 .nota-valor { margin: 0; font-size: 2rem; font-weight: 800; color: var(--verde-udec); }
+
+/* ---- Páginas públicas (buscar PGC y ficha sin iniciar sesión) ----
+   Sin sesión no hay menú lateral: el contenido ocupa todo el ancho. */
+.app-shell.sin-sidebar { grid-template-columns: 1fr; }
+.app-shell.sin-sidebar .main-content {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.topbar .btn-ingresar {
+  background: #fff;
+  color: var(--verde-udec);
+  border-radius: 7px;
+  padding: .4rem .9rem;
+  font-size: .8rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+.topbar .btn-ingresar:hover { background: #EAF3EC; }
+.aviso-visitante {
+  background: #007B3E0D;
+  border: 1px solid #007B3E33;
+  border-radius: var(--bs-border-radius-lg);
+  padding: .7rem 1rem;
+  font-size: .85rem;
+  margin-bottom: 1.25rem;
+}
+
+/* ---- Buscador de PGC (HU-04): mismo lenguaje visual que la ficha / Mi PGC ---- */
+.panel-filtros {
+  background: #fff;
+  border-top: 5px solid var(--verde-medio);
+  border-radius: var(--bs-border-radius-lg);
+  padding: 1.1rem 1.25rem;
+  margin-bottom: 1.25rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .06);
+}
+.panel-resultados {
+  background: #fff;
+  border: 1px solid #E3E8E4;
+  border-radius: var(--bs-border-radius-lg);
+  overflow: hidden;
+}
+.panel-resultados .table { margin-bottom: 0; }
+.panel-resultados thead th {
+  background: #007B3E0D;
+  color: var(--verde-udec);
+  font-size: .78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  border-bottom: 1px solid #E3E8E4;
+}
+.panel-resultados td, .panel-resultados th { padding: .8rem 1rem; }
+.resumen-resultados { font-size: .85rem; color: var(--gris); margin-bottom: .6rem; }
+.titulo-resultado { font-weight: 700; color: var(--verde-udec); text-decoration: none; }
+.titulo-resultado:hover { text-decoration: underline; }
+
+/* Cabecera de la ficha: ciclo + estado en una línea */
+.pgc-cabecera-meta { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+
+
+/* ---- Ajustes visuales generales ---- */
+/* Las insignias y botones de tabla no se parten en dos líneas ("En / Proceso") */
+.badge-estado { white-space: nowrap; }
+.panel-resultados .btn { white-space: nowrap; }
+/* El menú lateral ocupa todo el alto de la página, no solo el de sus opciones */
+#sidebar > .sidebar { height: 100%; }
+/* En celular el topbar baja los datos del usuario a otra línea en vez de desbordarse */
+@media (max-width: 640px) {
+  .topbar { flex-wrap: wrap; }
+  .topbar .usuario-box { flex-wrap: wrap; justify-content: flex-end; }
+}

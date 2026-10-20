@@ -31,19 +31,34 @@ function puedeEditarRubrica(usuario) {
   );
 }
 
+/** Mapa id → nombre del ciclo ("Fundamentación"...); si falla, se usa "Ciclo N". */
+async function obtenerNombresCiclo() {
+  try {
+    const res = await peticionApi("/ciclos");
+    if (!res.ok) return {};
+    const nombres = {};
+    (await res.json()).forEach((ciclo) => { nombres[ciclo.id] = ciclo.subject_cycle; });
+    return nombres;
+  } catch {
+    return {};
+  }
+}
+
 /** Si hay un solo ciclo lo muestra como título; si hay varios, un selector. */
-function pintarSelectorCiclo(ciclos) {
+async function pintarSelectorCiclo(ciclos) {
   const zona = document.getElementById("zona-ciclo");
+  const nombres = await obtenerNombresCiclo();
+  const nombre = (id) => nombres[id] || `Ciclo ${id}`;
 
   if (ciclos.length === 1) {
-    zona.innerHTML = `<p class="mb-0"><strong>Ciclo ${escaparHtml(ciclos[0])}</strong></p>`;
+    zona.innerHTML = `<p class="mb-0"><strong>${escaparHtml(nombre(ciclos[0]))}</strong></p>`;
     return;
   }
 
   zona.innerHTML = `
     <label for="selector-ciclo" class="form-label">Ciclo</label>
-    <select id="selector-ciclo" class="form-select" style="max-width:220px;">
-      ${ciclos.map((id) => `<option value="${escaparHtml(id)}">Ciclo ${escaparHtml(id)}</option>`).join("")}
+    <select id="selector-ciclo" class="form-select" style="max-width:260px;">
+      ${ciclos.map((id) => `<option value="${escaparHtml(id)}">${escaparHtml(nombre(id))}</option>`).join("")}
     </select>`;
 
   document.getElementById("selector-ciclo").addEventListener("change", (evento) => {

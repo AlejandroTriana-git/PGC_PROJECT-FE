@@ -104,17 +104,24 @@ async function inicializarAprobaciones() {
   // El ciclo del encargado se obtiene del JWT decodificado
   try {
     const usuario = obtenerUsuario();
-    // El encargado tiene en su JWT el campo encargado_de con el ciclo asignado
-    const id_cycle = usuario && usuario.encargado_de ? usuario.encargado_de[0] : null;
+    // El encargado tiene en su JWT el arreglo encargado_de con TODOS sus ciclos;
+    // antes solo se consultaba el primero, ahora se juntan las pendientes de cada uno.
+    const ciclos = usuario && usuario.encargado_de ? usuario.encargado_de : [];
 
-    if (!id_cycle) {
+    if (ciclos.length === 0) {
       mostrarBanner("banner", "error", "No tienes un ciclo asignado como encargado.");
       return;
     }
 
-    const res = await peticionApi(`/propuestas?cycle=${id_cycle}&estado=Pendiente de validación`);
-    if (!res.ok) throw new Error();
-    propuestas = await res.json();
+    const listas = await Promise.all(
+      ciclos.map(async (id_cycle) => {
+        const estado = encodeURIComponent("Pendiente de validación");
+        const res = await peticionApi(`/propuestas?cycle=${id_cycle}&estado=${estado}`);
+        if (!res.ok) throw new Error();
+        return res.json();
+      })
+    );
+    propuestas = listas.flat();
   } catch {
     mostrarBanner("banner", "error", "No fue posible cargar las propuestas. Intenta recargar la página.");
   }

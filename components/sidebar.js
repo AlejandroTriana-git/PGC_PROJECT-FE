@@ -32,7 +32,6 @@ const MENU_BASE_POR_ROL = {
     { grupo: "PGC", opciones: [{ id: "miPgc", label: "Mi PGC", href: "miPgc.html" }] },
     { id: "buscarPgc", label: "Buscar PGC", href: "buscarPgc.html" },
     { id: "lineamiento", label: "Lineamientos", href: "lineamiento.html" },
-    { id: "perfil", label: "Mi perfil", href: "perfil.html" },
   ],
   administrador: [
     { id: "dashboard", label: "Inicio", href: "dashboard.html" },
@@ -43,22 +42,19 @@ const MENU_BASE_POR_ROL = {
         { id: "usuarios", label: "Usuarios", href: "usuarios.html" },
       ],
     },
-    { id: "reportes", label: "Reportes", href: "reportes.html" },
     { id: "buscarPgc", label: "Buscar PGC", href: "buscarPgc.html" },
     { id: "lineamiento", label: "Lineamientos", href: "lineamiento.html" },
-    { id: "perfil", label: "Mi perfil", href: "perfil.html" },
   ],
 };
 
 const MENU_POR_CONTEXTO = {
   profesor: [
     { id: "dashboard", label: "Inicio", href: "dashboard.html" },
-    { id: "reportes", label: "Propuestas", href: "reportes.html" },
     { id: "buscarPgc", label: "Buscar PGC", href: "buscarPgc.html" },
     { id: "lineamiento", label: "Lineamientos", href: "lineamiento.html" },
-    { id: "perfil", label: "Mi perfil", href: "perfil.html" },
   ],
   encargado: [
+    { id: "dashboard", label: "Inicio", href: "dashboard.html" },
     { id: "aprobaciones", label: "Aprobaciones", href: "aprobaciones.html" },
     {
       grupo: "Documentos del ciclo",
@@ -69,9 +65,9 @@ const MENU_POR_CONTEXTO = {
       ],
     },
     { id: "buscarPgc", label: "Buscar PGC", href: "buscarPgc.html" },
-    { id: "perfil", label: "Mi perfil", href: "perfil.html" },
   ],
   jurado: [
+    { id: "dashboard", label: "Inicio", href: "dashboard.html" },
     {
       grupo: "Evaluaciones",
       opciones: [
@@ -79,9 +75,15 @@ const MENU_POR_CONTEXTO = {
         { id: "calificado", label: "Calificados", href: "calificado.html" },
       ],
     },
+    // El jurado califica con la rúbrica del ciclo: rubrica.js ya la deja leer en este contexto.
+    {
+      grupo: "Documentos",
+      opciones: [
+        { id: "lineamiento", label: "Lineamientos", href: "lineamiento.html" },
+        { id: "rubrica", label: "Rúbricas", href: "rubrica.html" },
+      ],
+    },
     { id: "buscarPgc", label: "Buscar PGC", href: "buscarPgc.html" },
-    { id: "lineamiento", label: "Lineamientos", href: "lineamiento.html" },
-    { id: "perfil", label: "Mi perfil", href: "perfil.html" },
   ],
 };
 
@@ -223,4 +225,20 @@ async function renderizarBarraLateral(idContenedor, paginaActiva) {
     <nav class="sidebar" aria-label="Menú principal">
       ${visible.map((entrada) => construirItemMenu(entrada, paginaActiva)).join("")}
     </nav>`;
+}
+
+/**
+ * Para páginas que también se pueden ver SIN sesión (buscarPgc, fichaPgc).
+ * Con sesión pinta el menú normal; sin sesión quita la columna del menú
+ * para que el contenido use todo el ancho. Devuelve true si hay sesión.
+ */
+function renderizarBarraLateralOpcional(idContenedor, paginaActiva) {
+  if (estaAutenticado()) {
+    renderizarBarraLateral(idContenedor, paginaActiva);
+    return true;
+  }
+  const elemento = document.getElementById(idContenedor);
+  if (elemento) elemento.remove();
+  document.querySelector(".app-shell")?.classList.add("sin-sidebar");
+  return false;
 }

@@ -2,9 +2,12 @@
 // BUSCARPGC.JS — HU-04: buscador general de PGC registrados,
 // con filtros y resultados paginados (15 por página).
 //
-// Contrato asumido para GET /pgc/search (a confirmar con backend,
-// todavía no está implementado): recibe query params
-// q, categoria, ciclo, estado, pagina — y responde:
+// Es una página PÚBLICA: funciona con o sin sesión. El backend
+// usa autenticación opcional en GET /pgc/search, /pgc/:id,
+// /categorias y /ciclos (mismos endpoints de siempre).
+//
+// Contrato de GET /pgc/search: query params q, categoria, ciclo,
+// estado, pagina — responde:
 //   {
 //     resultados: [{ id_pgc, title_proposal, name_cycle, categorias, estado }],
 //     pagina_actual, total_paginas, total_resultados
@@ -15,10 +18,12 @@
 const RESULTADOS_POR_PAGINA = 15;
 let pagina_actual = 1;
 
-/** Arma las categorías de un resultado como texto simple (ya escapado). */
-function nombresCategoriasBusqueda(categorias) {
-  if (!Array.isArray(categorias) || categorias.length === 0) return "Sin categorías";
-  return categorias.map((c) => escaparHtml(typeof c === "object" ? c.name_category : c)).join(", ");
+/** Categorías de un resultado como chips (mismo estilo que la ficha y Mi PGC). */
+function chipsCategoriasBusqueda(categorias) {
+  const textos = Array.isArray(categorias)
+    ? categorias.map((c) => (typeof c === "object" ? c.name_category : c))
+    : [];
+  return listaChips(textos, "Sin categorías");
 }
 
 /** Llena los selects de Categoría y Ciclo con datos reales. */
@@ -102,16 +107,24 @@ function pintarPaginacion(pagina_actual_resp, total_paginas) {
 async function ejecutarBusqueda() {
   ocultarBanner("banner");
   const cuerpo = document.getElementById("tabla-resultados");
+  const resumen = document.getElementById("resumen-resultados");
   cuerpo.innerHTML = `<tr><td colspan="5" class="text-muted fst-italic">Buscando...</td></tr>`;
+  resumen.textContent = "";
 
   try {
-    const res = await peticionApi(`/pgc/search?${armarQueryBusqueda()}`);
+    const query = armarQueryBusqueda();
+    // Se guarda la búsqueda en la URL (sin recargar) para que "Volver" la conserve.
+    history.replaceState(null, "", `${window.location.pathname}?${query}`);
+    const res = await peticionApi(`/pgc/search?${query}`);
     if (!res.ok) throw new Error();
     const datos = await res.json();
     const resultados = datos.resultados || [];
 
+    const total = datos.total_resultados ?? resultados.length;
+    resumen.textContent = total === 1 ? "1 proyecto encontrado" : `${total} proyectos encontrados`;
+
     if (resultados.length === 0) {
-      cuerpo.innerHTML = `<tr><td colspan="5" class="text-muted fst-italic">No se encontraron proyectos</td></tr>`;
+      cuerpo.innerHTML = `<tr><td colspan="5" class="text-muted fst-italic">No se encontraron proyectos con esos filtros.</td></tr>`;
       document.getElementById("paginacion").innerHTML = "";
       return;
     }
@@ -120,12 +133,13 @@ async function ejecutarBusqueda() {
       .map(
         (p) => `
         <tr>
-          <td>${escaparHtml(p.title_proposal)}</td>
+          <td><a class="titulo-resultado" href="fichaPgc.html?id=${encodeURIComponent(p.id_pgc)}">${escaparHtml(p.title_proposal)}</a></td>
           <td>${escaparHtml(p.name_cycle ?? p.id_cycle ?? "—")}</td>
-          <td>${nombresCategoriasBusqueda(p.categorias)}</td>
+          <td>${chipsCategoriasBusqueda(p.categorias)}</td>
           <td><span class="badge-estado ${p.estado === "Terminado" ? "aprobada" : "pendiente"}">${escaparHtml(p.estado)}</span></td>
           <td class="text-end">
-            <a class="btn btn-sm btn-outline-primary" href="fichaPgc.html?id=${p.id_pgc}">Ver ficha</a>
+            <a class="btn btn-sm btn-outline-primary" href="fichaPgc.html?id=${encodeURIComponent(p.id_pgc)}"
+               aria-label="Ver ficha de ${escaparHtml(p.title_proposal)}">Ver ficha</a>
           </td>
         </tr>`
       )
@@ -138,9 +152,28 @@ async function ejecutarBusqueda() {
   }
 }
 
-function inicializarBuscarPgc() {
-  cargarFiltros();
-  ejecutarBusqueda(); // primera carga, sin filtros
+/**
+ * Rellena el formulario con los filtros que traiga la URL (?q=&categoria=...).
+ * Así, al volver desde una ficha, la búsqueda sigue donde estaba.
+ */
+function aplicarFiltrosDeUrl() {
+  const parametros = new URLSearchParams(window.location.search);
+  const asignar = (id, valor) => {
+    const campo = document.getElementById(id);
+    if (campo && valor !== null) campo.value = valor;
+  };
+  asignar("filtro-texto", parametros.get("q"));
+  asignar("filtro-categoria", parametros.get("categoria"));
+  asignar("filtro-ciclo", parametros.get("ciclo"));
+  asignar("filtro-estado", parametros.get("estado"));
+  const pagina = parseInt(parametros.get("pagina"), 10);
+  if (pagina > 0) pagina_actual = pagina;
+}
+
+async function inicializarBuscarPgc() {
+  await cargarFiltros(); // primero las opciones, para poder marcar las de la URL
+  aplicarFiltrosDeUrl();
+  ejecutarBusqueda();
 
   document.getElementById("form-busqueda").addEventListener("submit", (evento) => {
     evento.preventDefault();

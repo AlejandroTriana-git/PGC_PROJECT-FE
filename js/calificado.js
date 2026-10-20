@@ -1,206 +1,72 @@
 // ============================================================
-// APROBACIONES.JS — HU-08: listado y aprobación/rechazo de
-// propuestas para el contexto "Encargado de Ciclo".
+// CALIFICADO.JS — HU-07: PGC que el jurado logueado ya calificó.
+//
+// Antes este archivo era una copia de aprobaciones.js: buscaba
+// #tabla-propuestas (que no existe en calificado.html) y la página
+// llamaba a inicializarCalificados(), que no existía. Por eso la
+// tabla salía vacía.
+//
+// Ruta del backend:
+//   GET /pgc/calificados-por-mi → [{ id_pgc, id_cycle, state_pgc,
+//     title_proposal, name_cycle, leader_name, grade, comment, graded_at }]
 // ============================================================
 
-let propuestas = [];       // se llena desde GET /propuestas?estado=Pendiente
-let propuestaSeleccionada = null;
-let modalDetalle = null;
+let pgc_calificados = [];
 
-function pintarTabla() {
-  const cuerpo = document.getElementById("tabla-propuestas");
+/** Nota con un decimal (4 → "4.0"); "—" si no es un número. */
+function formatearNotaCalificado(nota) {
+  const numero = Number(nota);
+  return Number.isNaN(numero) ? "—" : numero.toFixed(1);
+}
 
-  if (propuestas.length === 0) {
-    cuerpo.innerHTML = `<tr><td colspan="5" class="text-muted fst-italic">No hay propuestas pendientes.</td></tr>`;
+/** Fecha corta en español ("12 oct 2026"); "" si no se puede leer. */
+function formatearFechaCalificado(valor) {
+  if (!valor) return "";
+  const fecha = new Date(String(valor).replace(" ", "T"));
+  return Number.isNaN(fecha.getTime())
+    ? ""
+    : fecha.toLocaleDateString("es-CO", { day: "numeric", month: "short", year: "numeric" });
+}
+
+function pintarTablaCalificados() {
+  const cuerpo = document.getElementById("tabla-calificados");
+
+  if (pgc_calificados.length === 0) {
+    cuerpo.innerHTML = `<tr><td colspan="5" class="text-muted fst-italic">Todavía no has calificado ningún PGC.</td></tr>`;
     return;
   }
 
-  cuerpo.innerHTML = propuestas
-    .map(
-      (propuesta) => `
+  cuerpo.innerHTML = pgc_calificados
+    .map((pgc) => {
+      const fecha = formatearFechaCalificado(pgc.graded_at);
+      return `
       <tr>
-        <td>${escaparHtml(propuesta.title_proposal)}</td>
-        <td>${escaparHtml(propuesta.leader_name)}</td>
-        <td>${escaparHtml(propuesta.num_integrantes)}</td>
-        <td>${escaparHtml(propuesta.ciclo)}</td>
-        <td class="text-end">
-          <button class="btn btn-sm btn-outline-primary" onclick="abrirDetalle(${propuesta.id_proposal})">Ver detalle</button>
+        <td>
+          <a href="fichaPgc.html?id=${encodeURIComponent(pgc.id_pgc)}" class="titulo-resultado">${escaparHtml(pgc.title_proposal)}</a>
+          ${fecha ? `<div class="text-muted" style="font-size:.75rem;">Calificado el ${escaparHtml(fecha)}</div>` : ""}
         </td>
-      </tr>`
-    )
+        <td>${escaparHtml(pgc.leader_name || "—")}</td>
+        <td>${escaparHtml(pgc.name_cycle ?? pgc.id_cycle ?? "—")}</td>
+        <td><span class="badge-estado aprobada">${escaparHtml(formatearNotaCalificado(pgc.grade))} / 5.0</span></td>
+        <td style="white-space:pre-wrap;max-width:420px;">${escaparHtml(pgc.comment || "—")}</td>
+      </tr>`;
+    })
     .join("");
 }
 
-async function abrirDetalle(id) {
-  // Usar id_proposal (no .id) tal como lo devuelve el BE
-  propuestaSeleccionada = propuestas.find((p) => p.id_proposal === id);
-  if (!propuestaSeleccionada) return;
+async function inicializarCalificados() {
+  const cuerpo = document.getElementById("tabla-calificados");
+  cuerpo.innerHTML = `<tr><td colspan="5" class="text-muted fst-italic">Cargando...</td></tr>`;
 
-  // Mapeo de campos del BE al detalle del modal
-  document.getElementById("detalle-titulo").textContent          = propuestaSeleccionada.title_proposal;
-  document.getElementById("detalle-lider").textContent           = propuestaSeleccionada.leader_name || "—";
-  document.getElementById("detalle-integrantes").textContent     = propuestaSeleccionada.nombres_integrantes || "Solo el líder";
-  document.getElementById("detalle-categorias").textContent      = propuestaSeleccionada.categorias || "Sin categorías";
-  document.getElementById("detalle-descripcion").textContent     = propuestaSeleccionada.descr_proposal || "—";
-  document.getElementById("detalle-problema").textContent        = propuestaSeleccionada.problem_proposal;
-  document.getElementById("detalle-justificacion").textContent   = propuestaSeleccionada.justification_proposal;
-  document.getElementById("detalle-objetivos").textContent       = propuestaSeleccionada.objectives_proposal;
-  document.getElementById("detalle-solucion").textContent        = propuestaSeleccionada.solution_proposal;
-
-  // Bug 2: cargar URL firmada del PDF desde el BE al abrir el modal
-  const pdfContenedor = document.getElementById("detalle-pdf-contenedor");
-  pdfContenedor.innerHTML = `<span class="text-muted fst-italic" style="font-size:.82rem;">Cargando enlace del PDF…</span>`;
   try {
-    const resPdf = await peticionApi(`/propuestas/${propuestaSeleccionada.id_proposal}/pdf`);
-    if (resPdf.ok) {
-      const pdfData = await resPdf.json();
-      renderEnlacePdf(pdfContenedor, pdfData);
-    } else {
-      renderEnlacePdf(pdfContenedor, null);
-    }
-  } catch {
-    renderEnlacePdf(pdfContenedor, null);
-  }
-
-  document.getElementById("zona-rechazo").classList.add("hidden");
-  document.getElementById("comentario-rechazo").value = "";
-  document.getElementById("btn-mostrar-rechazo").classList.remove("d-none");
-  document.getElementById("btn-confirmar-rechazo").classList.add("d-none");
-  mostrarConfirmacionAprobacion(false);
-
-  modalDetalle.show();
-}
-
-/**
- * Muestra u oculta el paso de confirmación de "Aprobar". Mientras se
- * confirma se esconden Aprobar/Rechazar para que no se mezclen las acciones.
- */
-function mostrarConfirmacionAprobacion(visible) {
-  document.getElementById("zona-confirmar-aprobacion").classList.toggle("hidden", !visible);
-  document.getElementById("btn-confirmar-aprobacion").classList.toggle("d-none", !visible);
-  document.getElementById("btn-cancelar-aprobacion").classList.toggle("d-none", !visible);
-  document.getElementById("btn-aprobar").classList.toggle("d-none", visible);
-  document.getElementById("btn-mostrar-rechazo").classList.toggle("d-none", visible);
-  if (visible) {
-    // Si estaba abierta la zona de rechazo, se cierra.
-    document.getElementById("zona-rechazo").classList.add("hidden");
-    document.getElementById("btn-confirmar-rechazo").classList.add("d-none");
-    document.getElementById("btn-confirmar-aprobacion").focus();
-  }
-}
-
-
-function quitarDeLaLista(id) {
-  // Usar id_proposal (no .id)
-  propuestas = propuestas.filter((p) => p.id_proposal !== id);
-  pintarTabla();
-  modalDetalle.hide();
-}
-
-async function inicializarAprobaciones() {
-  modalDetalle = new bootstrap.Modal(document.getElementById("modal-detalle"));
-
-  // ── Carga las propuestas pendientes desde la API ──────────
-  // El ciclo del encargado se obtiene del JWT decodificado
-  try {
-    const usuario = obtenerUsuario();
-    // El encargado tiene en su JWT el campo encargado_de con el ciclo asignado
-    const id_cycle = usuario && usuario.encargado_de ? usuario.encargado_de[0] : null;
-
-    if (!id_cycle) {
-      mostrarBanner("banner", "error", "No tienes un ciclo asignado como encargado.");
-      return;
-    }
-
-    const res = await peticionApi(`/propuestas?cycle=${id_cycle}&estado=Pendiente de validación`);
+    const res = await peticionApi("/pgc/calificados-por-mi");
     if (!res.ok) throw new Error();
-    propuestas = await res.json();
+    const datos = await res.json();
+    pgc_calificados = Array.isArray(datos) ? datos : [];
   } catch {
-    mostrarBanner("banner", "error", "No fue posible cargar las propuestas. Intenta recargar la página.");
+    pgc_calificados = [];
+    mostrarBanner("banner", "error", "No fue posible cargar los PGC calificados. Intenta recargar la página.");
   }
 
-  pintarTabla();
-
-  // ── Aprobar (paso 1): pide confirmación ───────────────────
-  document.getElementById("btn-aprobar").addEventListener("click", () => {
-    mostrarConfirmacionAprobacion(true);
-  });
-
-  // ── Cancelar la aprobación ────────────────────────────────
-  document.getElementById("btn-cancelar-aprobacion").addEventListener("click", () => {
-    mostrarConfirmacionAprobacion(false);
-  });
-
-  // ── Aprobar (paso 2): confirmado, se envía al backend ─────
-  document.getElementById("btn-confirmar-aprobacion").addEventListener("click", async () => {
-    const boton = document.getElementById("btn-confirmar-aprobacion");
-    boton.disabled = true;
-    boton.textContent = "Aprobando...";
-
-    try {
-      const res = await peticionApi(`/propuestas/${propuestaSeleccionada.id_proposal}/aprobar`, { method: "PATCH" });
-      const json = await res.json().catch(() => ({}));
-
-      mostrarBanner(
-        "banner",
-        res.ok ? "success" : "error",
-        json.mensaje || (res.ok
-          ? `Propuesta "${propuestaSeleccionada.title_proposal}" aprobada.`
-          : "No fue posible aprobar la propuesta.")
-      );
-
-      if (res.ok) quitarDeLaLista(propuestaSeleccionada.id_proposal);
-    } catch {
-      mostrarBanner("banner", "error", "No fue posible conectar con el servidor.");
-    } finally {
-      boton.disabled = false;
-      boton.textContent = "Sí, aprobar";
-      mostrarConfirmacionAprobacion(false);
-    }
-  });
-
-  // ── Mostrar zona de rechazo ───────────────────────────────
-  document.getElementById("btn-mostrar-rechazo").addEventListener("click", () => {
-    mostrarConfirmacionAprobacion(false);
-    document.getElementById("zona-rechazo").classList.remove("hidden");
-    document.getElementById("btn-mostrar-rechazo").classList.add("d-none");
-    document.getElementById("btn-confirmar-rechazo").classList.remove("d-none");
-  });
-
-  // ── Confirmar rechazo ─────────────────────────────────────
-  document.getElementById("btn-confirmar-rechazo").addEventListener("click", async () => {
-    const comentario = document.getElementById("comentario-rechazo").value.trim();
-    if (!comentario) {
-      document.getElementById("comentario-rechazo").classList.add("is-invalid");
-      return;
-    }
-    document.getElementById("comentario-rechazo").classList.remove("is-invalid");
-
-    const boton = document.getElementById("btn-confirmar-rechazo");
-    boton.disabled = true;
-    boton.textContent = "Rechazando...";
-
-    try {
-      const res = await peticionApi(`/propuestas/${propuestaSeleccionada.id_proposal}/rechazar`, {
-        method: "PATCH",
-        body: JSON.stringify({ comentario }),
-      });
-      const json = await res.json().catch(() => ({}));
-
-      mostrarBanner(
-        "banner",
-        res.ok ? "success" : "error",
-        json.mensaje || (res.ok
-          ? `Propuesta "${propuestaSeleccionada.title_proposal}" rechazada.`
-          : "No fue posible rechazar la propuesta.")
-      );
-
-      if (res.ok) quitarDeLaLista(propuestaSeleccionada.id_proposal);
-    } catch {
-      mostrarBanner("banner", "error", "No fue posible conectar con el servidor.");
-    } finally {
-      boton.disabled = false;
-      boton.textContent = "Confirmar rechazo";
-    }
-  });
+  pintarTablaCalificados();
 }

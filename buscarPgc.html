@@ -19,27 +19,33 @@
     <main class="main-content">
       <div class="page-head mb-4">
         <h1 style="font-size:clamp(1.4rem,3vw,1.9rem);font-weight:800;color:var(--verde-medio);">Buscar proyectos</h1>
-        <p class="text-muted">Consulta los Proyectos de Grado (PGC) ya registrados.</p>
+        <p class="text-muted mb-0">Consulta los Proyectos de Grado (PGC) ya registrados.</p>
       </div>
 
-      <form id="form-busqueda" class="row g-2 mb-4" novalidate>
-        <div class="col-12 col-md-4">
+      <!-- Solo se muestra a quien entra sin iniciar sesión (buscarPgc.js) -->
+      <div id="aviso-visitante" class="aviso-visitante hidden">
+        Estás consultando el catálogo como visitante.
+        <a href="index.html" style="font-weight:700;">Inicia sesión</a> para radicar propuestas, ver tu PGC o calificar.
+      </div>
+
+      <form id="form-busqueda" class="panel-filtros row g-2 mx-0" novalidate role="search" aria-label="Filtros de búsqueda">
+        <div class="col-12 col-lg-4">
           <label for="filtro-texto" class="form-label">Palabra clave</label>
-          <input type="text" class="form-control" id="filtro-texto" placeholder="Título o descripción...">
+          <input type="search" class="form-control" id="filtro-texto" placeholder="Título o descripción...">
         </div>
-        <div class="col-6 col-md-3">
+        <div class="col-6 col-lg-3">
           <label for="filtro-categoria" class="form-label">Categoría</label>
           <select class="form-select" id="filtro-categoria">
             <option value="">Todas</option>
           </select>
         </div>
-        <div class="col-6 col-md-2">
+        <div class="col-6 col-lg-2">
           <label for="filtro-ciclo" class="form-label">Ciclo</label>
           <select class="form-select" id="filtro-ciclo">
             <option value="">Todos</option>
           </select>
         </div>
-        <div class="col-6 col-md-2">
+        <div class="col-6 col-lg-2">
           <label for="filtro-estado" class="form-label">Estado</label>
           <select class="form-select" id="filtro-estado">
             <option value="">Todos</option>
@@ -47,15 +53,17 @@
             <option value="Terminado">Terminado</option>
           </select>
         </div>
-        <div class="col-6 col-md-1 d-flex align-items-end">
+        <div class="col-6 col-lg-1 d-flex align-items-end">
           <button type="submit" class="btn btn-primary w-100">Buscar</button>
         </div>
       </form>
 
       <div id="banner" class="banner hidden"></div>
 
-      <div class="table-responsive">
-        <table class="table align-middle bg-white">
+      <p id="resumen-resultados" class="resumen-resultados" aria-live="polite"></p>
+
+      <div class="panel-resultados table-responsive">
+        <table class="table align-middle">
           <thead>
             <tr>
               <th scope="col">Título</th>
@@ -69,7 +77,7 @@
         </table>
       </div>
 
-      <nav id="paginacion" class="d-flex justify-content-center gap-2 mt-3"></nav>
+      <nav id="paginacion" class="d-flex justify-content-center gap-2 mt-3" aria-label="Paginación de resultados"></nav>
     </main>
   </div>
 
@@ -83,9 +91,11 @@
   <script src="components/footer.js"></script>
   <script src="js/buscarPgc.js"></script>
   <script>
-    requerirAutenticacion();
+    // Página PÚBLICA (punto 5): no se llama requerirAutenticacion().
+    // Con sesión se ve con su menú; sin sesión, sin menú y con aviso de visitante.
     renderizarBarraSuperior("topbar");
-    renderizarBarraLateral("sidebar", "buscarPgc");
+    const con_sesion = renderizarBarraLateralOpcional("sidebar", "buscarPgc");
+    if (!con_sesion) document.getElementById("aviso-visitante").classList.remove("hidden");
     renderizarPiePagina("footer");
     inicializarBuscarPgc();
   </script>

@@ -177,7 +177,7 @@ async function cerrarSesionUsuario() {
 /**
  * "Middleware" de rutas protegidas del lado del frontend.
  * Se llama al inicio de cada página que requiera sesión
- * (dashboard, usuarios, reportes, perfil). Si no hay sesión
+ * (dashboard, usuarios...). Si no hay sesión
  * válida, redirige al login con el mensaje del HU-01.
  */
 function requerirAutenticacion() {
@@ -205,7 +205,7 @@ function requerirCapacidad(capacidad) {
 /**
  * Bloquea el acceso a una página reservada a uno o varios roles
  * puntuales (ej. "administrador" para usuarios.html, o
- * ["profesor", "administrador"] para reportes.html, que la ven
+ * ["profesor", "administrador"] para una página que vean
  * ambos roles). Acepta un string o un arreglo. Reutiliza
  * requerirAutenticacion() y compara el rol ya traducido de
  * obtenerUsuario(). Si no coincide, lo devuelve a su dashboard.

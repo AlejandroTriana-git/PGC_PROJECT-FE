@@ -94,7 +94,9 @@ function renderizarBarraSuperior(idContenedor) {
   const elemento = document.getElementById(idContenedor);
   if (!elemento) return;
 
-  const usuario = typeof obtenerUsuario === "function" ? obtenerUsuario() : null;
+  // Solo se muestra el usuario si la sesión sigue vigente: en las páginas
+  // públicas (buscar PGC / ficha) un token vencido no debe pintarse como sesión.
+  const usuario = typeof obtenerUsuario === "function" && estaAutenticado() ? obtenerUsuario() : null;
 
   // El <main> de cada página recibe el id al que apunta el enlace "saltar".
   // tabindex=-1 permite que reciba el foco al activarlo, sin entrar al orden de Tab.
@@ -117,8 +119,8 @@ function renderizarBarraSuperior(idContenedor) {
               ${construirChipsUsuario(usuario)}
               <button class="btn-salir" onclick="this.disabled = true; cerrarSesionUsuario()">Cerrar sesión</button>
             </div>`
-          : ""
+          : `<a class="btn-ingresar" href="index.html">Iniciar sesión</a>`
       }
     </div>
   `;
-}
+} 
