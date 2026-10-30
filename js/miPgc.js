@@ -191,7 +191,8 @@ function formatearNota(valor) {
  * pública (fichaPgc.html), que cualquier usuario puede abrir con el id de otro PGC.
  *
  * Contrato de GET /pgc/:id_pgc/calificaciones (backend):
- *   { nota_global: 4.3 | null, calificaciones: [{ juror_name, grade, comment, graded_at }] }
+ *   { nota_global: 4.3 | null, calificaciones: [{ juror_name, comment, graded_at }] }
+ * Al estudiante no le llega la nota de cada jurado, solo la global y los comentarios.
  * Si nadie ha calificado: nota_global null y calificaciones [].
  * pgc_actual.notas vale null cuando la petición falló.
  */
@@ -219,10 +220,7 @@ function pintarCalificaciones() {
       const fecha_texto = Number.isNaN(fecha.getTime()) ? "" : fecha.toLocaleDateString("es-CO");
       return `
         <li class="list-group-item">
-          <div class="d-flex justify-content-between align-items-start gap-2">
-            <strong>${escaparHtml(c.juror_name)}</strong>
-            <span class="badge-estado aprobada">${escaparHtml(formatearNota(c.grade))} / 5.0</span>
-          </div>
+          <strong>${escaparHtml(c.juror_name)}</strong>
           <p class="mb-0 mt-2" style="white-space:pre-wrap;">${escaparHtml(c.comment)}</p>
           ${fecha_texto ? `<span class="text-muted" style="font-size:.75rem;">Calificado el ${escaparHtml(fecha_texto)}</span>` : ""}
         </li>`;
@@ -237,7 +235,7 @@ function pintarCalificaciones() {
         <span class="text-muted" style="font-size:1rem;font-weight:600;">/ 5.0</span>
       </p>
     </div>
-    <h4 class="h6" style="font-weight:800;color:var(--verde-udec);">Calificación por jurado</h4>
+    <h4 class="h6" style="font-weight:800;color:var(--verde-udec);">Comentarios de los jurados</h4>
     <ul class="list-group mt-1">${filas}</ul>
   `;
 }
