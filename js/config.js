@@ -4,4 +4,4 @@
 // una URL a mano. Así, cuando el backend cambie de dirección
 // (por ejemplo al desplegarlo), solo se edita esta línea.
 // ============================================================
-const URL_API = "http://localhost:3000/api";
+const URL_API = "https://pgc-project-be.onrender.com/api";
