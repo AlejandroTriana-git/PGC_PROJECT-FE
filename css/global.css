@@ -1,5 +1,640 @@
-/*
-Estilos generales.
-Variables, reset, tipografía base y estilos compartidos
-por todas las páginas del frontend.
-*/
+/* ============================================================
+   GLOBAL.CSS — Sistema de diseño único del proyecto PGC.
+   Se incluye en TODAS las páginas junto a Bootstrap 5.
+   Aquí viven: paleta de color oficial UDEC (Manual de Imagen
+   ECOM 002 V.19), tipografía, y los bloques reutilizables
+   (topbar, sidebar, banners, chips, footer) para que cada
+   vista nueva NO tenga que reescribir estos estilos: solo
+   importa este archivo y usa las clases de abajo.
+   ============================================================ */
+
+/* ---- Paleta oficial UDEC ---- */
+:root {
+  --verde-udec:      #00482B;
+  --verde-medio:     #007B3E;
+  --verde-brillante: #79C000;
+  --oro:             #DAAA00;
+  --naranja:         #F7931E;
+  --teal:            #00A99D;
+  --amarillo:        #FBE122;
+  --rojo-error:      #C0392B;
+  --gris:            #4d4d4d;
+  --blanco:          #FFF;
+  --bg-app:          #F4F6F4;
+
+  /* Sobrescritura de variables de Bootstrap 5 para que sus
+     componentes (btn, form-control, nav, etc.) hereden la
+     identidad UDEC en lugar del azul por defecto. */
+  --bs-primary: var(--verde-medio);
+  --bs-primary-rgb: 0, 123, 62;
+  --bs-body-font-family: 'Montserrat', 'Century Gothic', sans-serif;
+  --bs-body-color: var(--gris);
+  --bs-body-bg: var(--bg-app);
+  --bs-border-radius: 9px;
+  --bs-border-radius-sm: 7px;
+  --bs-border-radius-lg: 12px;
+  --bs-link-color: var(--verde-medio);
+  --bs-link-hover-color: var(--verde-udec);
+
+  /* Bootstrap pinta los enlaces con las variables -rgb: sin ellas salían azules */
+  --bs-link-color-rgb: 0, 123, 62;
+  --bs-link-hover-color-rgb: 0, 72, 43;
+}
+
+* { 
+  box-sizing: border-box; 
+}
+
+html, body {
+  min-height: 100%;
+}
+
+body {
+  background: var(--bg-app);
+  color: var(--gris);
+  font-family: var(--bs-body-font-family);
+  -webkit-font-smoothing: antialiased;
+}
+
+a { 
+  text-decoration: none; 
+}
+
+/* ---- Botones: Bootstrap toma --bs-primary, pero el hover
+   necesita el verde oscuro institucional ---- */
+.btn-primary {
+  background-color: var(--verde-medio);
+  border-color: var(--verde-medio);
+  font-weight: 700;
+}
+
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:active {
+  background-color: var(--verde-udec) !important;
+  border-color: var(--verde-udec) !important;
+}
+
+.btn-outline-primary {
+  color: var(--verde-medio);
+  border-color: var(--verde-medio);
+}
+
+.btn-outline-primary:hover {
+  background-color: var(--verde-medio);
+  border-color: var(--verde-medio);
+}
+
+/* ---- Campos de formulario con foco institucional ---- */
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--verde-medio);
+  box-shadow: 0 0 0 0.2rem rgb(0 123 62 / 15%);
+}
+
+.form-label {
+  font-size: .78rem;
+  font-weight: 700;
+  color: var(--verde-udec);
+  margin-bottom: .4rem;
+}
+
+/* Campo marcado como inválido tras la respuesta del backend
+   (ej. "correo no registrado", "clave incorrecta"). Se aplica
+   agregando la clase .invalid al contenedor del campo. */
+.invalid .form-control {
+  border-color: var(--rojo-error);
+  box-shadow: 0 0 0 0.2rem rgb(192 57 43 / 12%);
+}
+
+/* ============================================================
+   TOPBAR — encabezado institucional (imagotipo).
+   Se inyecta vía components/navbar.js en un <div id="topbar">.
+   No se reescribe en cada página: solo se declara aquí una vez.
+   ============================================================ */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .7rem;
+  padding: .8rem clamp(1.25rem, 5vw, 3.5rem);
+  background: var(--verde-udec);
+}
+
+.logo-topbar {
+  height: 60px;
+  width: auto;
+}
+
+.topbar .usuario-box {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  color: #fff;
+  font-size: .82rem;
+}
+
+.topbar .btn-salir {
+  background: transparent;
+  border: 1px solid #ffffff40;
+  color: #fff;
+  font-size: .78rem;
+  font-weight: 600;
+  padding: .35rem .8rem;
+  border-radius: 100px;
+  cursor: pointer;
+  transition: background .15s ease;
+}
+.topbar .btn-salir:hover { background: #ffffff1a; }
+
+/* ---- Selector de contexto (Profesor: Docente/Encargado/Jurado) ----
+   Chip fijo y deshabilitado cuando no hay capacidades extra. */
+.role-chip-deshabilitado {
+  opacity: .75;
+  cursor: default;
+}
+
+/* Cuando SÍ hay capacidades extra, el chip se vuelve un <details>
+   desplegable — sin JS adicional para abrir/cerrar el menú. */
+.selector-contexto {
+  position: relative;
+}
+
+.selector-contexto summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.selector-contexto summary::-webkit-details-marker {
+  display: none;
+}
+
+.selector-contexto[open] summary {
+  background: #ffffff26;
+}
+
+.menu-contexto {
+  position: absolute;
+  top: calc(100% + .4rem);
+  right: 0;
+  background: #fff;
+  border-radius: 9px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
+  padding: .4rem;
+  min-width: 180px;
+  z-index: 20;
+}
+
+.opcion-contexto {
+  display: block;
+  padding: .55rem .75rem;
+  border-radius: 7px;
+  font-size: .82rem;
+  font-weight: 600;
+  color: var(--gris);
+}
+
+.opcion-contexto:hover {
+  background: #00482B0d;
+  color: var(--verde-udec);
+}
+
+.opcion-contexto.activa {
+  color: var(--verde-medio);
+  background: #007B3E14;
+}
+
+/* ============================================================
+   APP SHELL — estructura de las páginas internas (todo lo que
+   no es el login): sidebar + contenido. dashboard.html,
+   usuarios.html, reportes.html y perfil.html comparten este
+   layout sin reescribirlo.
+   ============================================================ */
+.app-shell {
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  min-height: calc(100vh - 64px - 52px); /* topbar + footer aprox */
+}
+
+@media (width <= 880px) {
+  .app-shell { grid-template-columns: 1fr; }
+}
+
+.sidebar {
+  background: var(--verde-udec);
+  padding: 1.4rem 1rem;
+}
+
+.sidebar .nav-link {
+  color: #DDEAE0;
+  font-weight: 600;
+  font-size: .88rem;
+  border-radius: 9px;
+  padding: .65rem .9rem;
+  margin-bottom: .25rem;
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+}
+
+.sidebar .nav-link.bloqueado {
+  color: #DDEAE099;
+  cursor: not-allowed;
+
+  /* Sin pointer-events: none: el <span> no tiene href, así que no
+     navega igual, y así el hover sí muestra el tooltip del motivo. */
+}
+
+.sidebar .nav-link.bloqueado:hover,
+.sidebar .nav-link.bloqueado:focus {
+  background: #ffffff0d;
+  color: #DDEAE0CC;
+}
+
+.sidebar .nav-link.active,
+.sidebar .nav-link:hover {
+  background: #ffffff1a;
+  color: #fff;
+}
+
+
+/* ---- Grupos desplegables del menú lateral ---- */
+.sidebar details.grupo-menu { margin-bottom: .25rem; }
+
+.sidebar details.grupo-menu > summary {
+  cursor: pointer;
+  list-style: none;
+  justify-content: space-between;
+}
+.sidebar details.grupo-menu > summary::-webkit-details-marker { display: none; }
+.sidebar details.grupo-menu > summary::after { content: "▾"; font-size: .8rem; }
+.sidebar details.grupo-menu[open] > summary::after { content: "▴"; }
+.sidebar .grupo-menu-items { padding-left: .9rem; margin-top: .15rem; }
+.sidebar .grupo-menu-items .nav-link { font-size: .84rem; }
+
+.sidebar .nav-link:focus-visible,
+.sidebar details.grupo-menu > summary:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+
+.main-content {
+  padding: clamp(1.25rem, 4vw, 2.5rem);
+}
+
+/* ---- Footer institucional (obligatorio en toda pieza, según
+   el Manual de Imagen: imagotipo/URL + Vigilada MinEducación) ---- */
+footer.app-footer {
+  background: var(--verde-udec);
+  color: #EAF3EC;
+  padding: .9rem clamp(1.25rem, 5vw, 3.5rem);
+  font-size: .76rem;
+  text-align: center;
+}
+
+footer.app-footer strong { color: #fff; }
+
+.footer-contacto {
+  margin-top: .3rem;
+  opacity: .85;
+  font-size: .7rem;
+}
+
+.footer-contacto a {
+  color: #fff;
+  text-decoration: underline;
+}
+
+/* ============================================================
+   BLOQUES REUTILIZABLES (banners, chips) — nacieron en el
+   mockup de login y se generalizan aquí para cualquier vista
+   que necesite mostrar mensajes de estado o etiquetas de rol.
+   ============================================================ */
+.banner {
+  display: flex;
+  align-items: flex-start;
+  gap: .6rem;
+  padding: .75rem .9rem;
+  border-radius: 9px;
+  font-size: .82rem;
+  font-weight: 600;
+  margin-bottom: 1.2rem;
+  border: 1px solid transparent;
+}
+
+.banner.error {
+  background: linear-gradient(#C0392B14, #C0392B14), #fff;
+  color: var(--rojo-error);
+  border-color: #C0392B33;
+}
+
+.banner.success {
+  background: linear-gradient(#007B3E14, #007B3E14), #fff;
+  color: var(--verde-medio);
+  border-color: #007B3E33;
+}
+
+.banner .ic {
+  flex-shrink: 0;
+  margin-top: .05rem;
+}
+
+.role-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .4rem .85rem;
+  border-radius: 100px;
+  font-size: .8rem;
+  font-weight: 600;
+  background: #ffffff14;
+  border: 1px solid #ffffff26;
+  color: #fff;
+}
+
+.role-chip .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+/* Chip de rol para usarse sobre fondo claro (tablas, tarjetas) */
+
+.chip-rol {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .3rem .7rem;
+  border-radius: 100px;
+  font-size: .74rem;
+  font-weight: 700;
+  color: var(--verde-udec);
+  background: #00482B0d;
+}
+
+/* ---- Insignia de estado de una propuesta (HU-08/HU-09) ----
+   Reutilizada en mis-propuestas.html y aprobaciones.html.
+   Colores funcionales de estado, no de identidad de marca. */
+.badge-estado {
+  display: inline-block;
+  padding: .35rem .8rem;
+  border-radius: 100px;
+  font-size: .78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.badge-estado.pendiente {
+  background: var(--oro);
+  color: #3a2d00;
+}
+
+.badge-estado.aprobada {
+  background: var(--verde-medio);
+  color: #fff;
+}
+
+.badge-estado.rechazada {
+  background: var(--rojo-error);
+  color: #fff;
+}
+
+.badge-estado.anulada {
+  background: var(--gris);
+  color: #fff;
+}
+
+.hidden {
+  display: none !important; 
+}
+
+/* ---- Tarjetas de detalle (propuesta, PGC, ficha, lineamientos) ----
+   Antes vivían solo en dashboard.css, que únicamente carga
+   dashboard.html: en el resto de páginas el subtítulo (.label) se
+   veía igual que el contenido. Ahora están aquí para todas. */
+.card-resumen {
+  background: #fff;
+  border-radius: var(--bs-border-radius-lg);
+  padding: 1.2rem 1.4rem;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 6%);
+  display: flex;
+  flex-direction: column;
+  gap: .3rem;
+}
+
+/* Subtítulo de cada campo: negrita, arriba del valor. */
+.label {
+  display: block;
+  font-size: .78rem;
+  font-weight: 700;
+  color: var(--gris);
+  text-transform: uppercase;
+  letter-spacing: .02em;
+  margin-bottom: .15rem;
+}
+
+/* El contenido debajo del subtítulo va en peso normal. */
+.label + p,
+.label + div {
+  font-weight: 400;
+}
+
+
+/* ---- Pancarta de fechas del inicio (Issue 12) ---- */
+.pancarta-lista { list-style: none; padding: 0; margin: 0; display: grid; gap: .75rem; }
+
+.pancarta {
+  border-radius: var(--bs-border-radius-lg);
+  padding: 1rem 1.25rem;
+  border-left: 6px solid;
+}
+.pancarta-habilitada { background: #007B3E14; border-left-color: var(--verde-medio); }
+.pancarta-proxima    { background: #DAAA0026; border-left-color: var(--oro); }
+
+.pancarta-estado {
+  display: block;
+  font-size: .72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  margin-bottom: .25rem;
+}
+.pancarta-habilitada .pancarta-estado { color: var(--verde-udec); }
+.pancarta-proxima .pancarta-estado    { color: #3a2d00; }
+.pancarta-texto { margin: 0; font-size: .95rem; color: var(--gris); }
+
+
+/* ---- Enlace "Saltar al contenido principal" (WCAG 2.4.1) ---- */
+.saltar-contenido {
+  position: absolute;
+  left: 1rem;
+  top: -4rem;
+  z-index: 2000;
+  background: #fff;
+  color: var(--verde-udec);
+  font-weight: 700;
+  padding: .6rem 1rem;
+  border-radius: 9px;
+}
+.saltar-contenido:focus { top: 1rem; }
+main:focus { outline: none; }
+
+
+
+/* ---- Piezas reutilizables de las pantallas "Mi propuesta" / "Mi PGC" (Issue 11) ---- */
+.pgc-cabecera {
+  background: #fff;
+  border-top: 5px solid var(--verde-medio);
+  border-radius: var(--bs-border-radius-lg);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.25rem;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 6%);
+}
+
+.pgc-cabecera h2 {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--verde-udec);
+  margin: 0 0 .6rem;
+}
+
+.titulo-seccion { font-size: 1rem; font-weight: 700; color: var(--verde-udec); margin-bottom: .75rem; }
+
+.campo-bloque {
+  background: #fff;
+  border: 1px solid #E3E8E4;
+  border-radius: var(--bs-border-radius-lg);
+  padding: 1rem 1.15rem;
+}
+
+.campo-etiqueta {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  font-size: .78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--verde-udec);
+  margin-bottom: .45rem;
+}
+.campo-texto { margin: 0; white-space: pre-wrap; line-height: 1.55; }
+
+.lista-chips { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: .4rem; }
+
+.chip-dato {
+  background: #007B3E14;
+  color: var(--verde-udec);
+  border: 1px solid #007B3E33;
+  border-radius: 100px;
+  padding: .25rem .75rem;
+  font-size: .82rem;
+  font-weight: 600;
+}
+
+.pestanas .nav-link { color: var(--gris); font-weight: 700; }
+.pestanas .nav-link:hover { color: var(--verde-medio); }
+.pestanas .nav-link.active { color: var(--verde-udec); box-shadow: inset 0 -3px 0 var(--verde-medio); }
+
+.contador {
+  display: inline-block;
+  min-width: 1.4rem;
+  margin-left: .45rem;
+  padding: .05rem .45rem;
+  border-radius: 100px;
+  background: var(--verde-udec);
+  color: #fff;
+  font-size: .72rem;
+  text-align: center;
+}
+
+.nota-global {
+  background: #007B3E14;
+  border-radius: var(--bs-border-radius-lg);
+  padding: 1rem 1.25rem;
+}
+.nota-valor { margin: 0; font-size: 2rem; font-weight: 800; color: var(--verde-udec); }
+
+/* ---- Páginas públicas (buscar PGC y ficha sin iniciar sesión) ----
+   Sin sesión no hay menú lateral: el contenido ocupa todo el ancho. */
+.app-shell.sin-sidebar { grid-template-columns: 1fr; }
+
+.app-shell.sin-sidebar .main-content {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.topbar .btn-ingresar {
+  background: #fff;
+  color: var(--verde-udec);
+  border-radius: 7px;
+  padding: .4rem .9rem;
+  font-size: .8rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+.topbar .btn-ingresar:hover { background: #EAF3EC; }
+
+.aviso-visitante {
+  background: #007B3E0D;
+  border: 1px solid #007B3E33;
+  border-radius: var(--bs-border-radius-lg);
+  padding: .7rem 1rem;
+  font-size: .85rem;
+  margin-bottom: 1.25rem;
+}
+
+/* ---- Buscador de PGC (HU-04): mismo lenguaje visual que la ficha / Mi PGC ---- */
+.panel-filtros {
+  background: #fff;
+  border-top: 5px solid var(--verde-medio);
+  border-radius: var(--bs-border-radius-lg);
+  padding: 1.1rem 1.25rem;
+  margin-bottom: 1.25rem;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 6%);
+}
+
+.panel-resultados {
+  background: #fff;
+  border: 1px solid #E3E8E4;
+  border-radius: var(--bs-border-radius-lg);
+  overflow: hidden;
+}
+.panel-resultados .table { margin-bottom: 0; }
+
+.panel-resultados thead th {
+  background: #007B3E0D;
+  color: var(--verde-udec);
+  font-size: .78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  border-bottom: 1px solid #E3E8E4;
+}
+.panel-resultados td, .panel-resultados th { padding: .8rem 1rem; }
+.resumen-resultados { font-size: .85rem; color: var(--gris); margin-bottom: .6rem; }
+.titulo-resultado { font-weight: 700; color: var(--verde-udec); text-decoration: none; }
+.titulo-resultado:hover { text-decoration: underline; }
+
+/* Cabecera de la ficha: ciclo + estado en una línea */
+.pgc-cabecera-meta { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+
+
+/* ---- Ajustes visuales generales ---- */
+
+/* Las insignias y botones de tabla no se parten en dos líneas ("En / Proceso") */
+
+
+
+.panel-resultados .btn { white-space: nowrap; }
+
+/* El menú lateral ocupa todo el alto de la página, no solo el de sus opciones */
+#sidebar > .sidebar { height: 100%; }
+
+/* En celular el topbar baja los datos del usuario a otra línea en vez de desbordarse */
+@media (width <= 640px) {
+  .topbar { flex-wrap: wrap; }
+  .topbar .usuario-box { flex-wrap: wrap; justify-content: flex-end; }
+}

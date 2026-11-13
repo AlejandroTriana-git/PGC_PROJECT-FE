@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UDEC PGC — Buscar proyectos</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="css/global.css">
+<link rel="icon" type="image/png" href="assets/logos/ESCUDO BLANCO.png">
+</head>
+<body>
+
+  <div id="topbar"></div>
+
+  <div class="app-shell">
+    <div id="sidebar"></div>
+
+    <main class="main-content">
+      <div class="page-head mb-4">
+        <h1 style="font-size:clamp(1.4rem,3vw,1.9rem);font-weight:800;color:var(--verde-medio);">Buscar proyectos</h1>
+        <p class="text-muted mb-0">Consulta los Proyectos de Grado (PGC) ya registrados.</p>
+      </div>
+
+      <!-- Solo se muestra a quien entra sin iniciar sesión (buscarPgc.js) -->
+      <div id="aviso-visitante" class="aviso-visitante hidden">
+        Estás consultando el catálogo como visitante.
+        <a href="index.html" style="font-weight:700;">Inicia sesión</a> para radicar propuestas, ver tu PGC o calificar.
+      </div>
+
+      <form id="form-busqueda" class="panel-filtros row g-2 mx-0" novalidate role="search" aria-label="Filtros de búsqueda">
+        <div class="col-12 col-lg-4">
+          <label for="filtro-texto" class="form-label">Palabra clave</label>
+          <input type="search" class="form-control" id="filtro-texto" placeholder="Título o descripción...">
+        </div>
+        <div class="col-6 col-lg-3">
+          <label for="filtro-categoria" class="form-label">Categoría</label>
+          <select class="form-select" id="filtro-categoria">
+            <option value="">Todas</option>
+          </select>
+        </div>
+        <div class="col-6 col-lg-2">
+          <label for="filtro-ciclo" class="form-label">Ciclo</label>
+          <select class="form-select" id="filtro-ciclo">
+            <option value="">Todos</option>
+          </select>
+        </div>
+        <div class="col-6 col-lg-2">
+          <label for="filtro-estado" class="form-label">Estado</label>
+          <select class="form-select" id="filtro-estado">
+            <option value="">Todos</option>
+            <option value="En Proceso">En Proceso</option>
+            <option value="Terminado">Terminado</option>
+          </select>
+        </div>
+        <div class="col-6 col-lg-1 d-flex align-items-end">
+          <button type="submit" class="btn btn-primary w-100">Buscar</button>
+        </div>
+      </form>
+
+      <div id="banner" class="banner hidden"></div>
+
+      <p id="resumen-resultados" class="resumen-resultados" aria-live="polite"></p>
+
+      <div class="panel-resultados table-responsive">
+        <table class="table align-middle">
+          <thead>
+            <tr>
+              <th scope="col">Título</th>
+              <th scope="col">Ciclo</th>
+              <th scope="col">Categorías</th>
+              <th scope="col">Estado</th>
+              <th scope="col"><span class="visually-hidden">Acciones</span></th>
+            </tr>
+          </thead>
+          <tbody id="tabla-resultados"></tbody>
+        </table>
+      </div>
+
+      <nav id="paginacion" class="d-flex justify-content-center gap-2 mt-3" aria-label="Paginación de resultados"></nav>
+    </main>
+  </div>
+
+  <div id="footer"></div>
+
+  <script src="js/config.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="components/navbar.js"></script>
+  <script src="components/sidebar.js"></script>
+  <script src="components/footer.js"></script>
+  <script src="js/buscarPgc.js"></script>
+  <script>
+    // Página PÚBLICA (punto 5): no se llama requerirAutenticacion().
+    // Con sesión se ve con su menú; sin sesión, sin menú y con aviso de visitante.
+    renderizarBarraSuperior("topbar");
+    const con_sesion = renderizarBarraLateralOpcional("sidebar", "buscarPgc");
+    if (!con_sesion) document.getElementById("aviso-visitante").classList.remove("hidden");
+    renderizarPiePagina("footer");
+    inicializarBuscarPgc();
+  </script>
+</body>
+</html>
