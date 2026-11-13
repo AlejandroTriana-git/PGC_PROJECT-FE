@@ -34,7 +34,9 @@ function listarArchivosFE(raiz) {
     }
   };
   CARPETAS_FE.forEach((c) => fs.existsSync(path.join(raiz, c)) && recorrer(c));
-  return archivos.sort();
+  
+  // Solución para SonarQube: función de comparación explícita
+  return archivos.sort((a, b) => a.localeCompare(b));
 }
 
 const aPorcentaje = (metrica) => (metrica && typeof metrica.pct === "number" ? metrica.pct : null);
