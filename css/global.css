@@ -19,7 +19,7 @@
   --amarillo:        #FBE122;
   --rojo-error:      #C0392B;
   --gris:            #4d4d4d;
-  --blanco:          #FFFFFF;
+  --blanco:          #FFF;
   --bg-app:          #F4F6F4;
 
   /* Sobrescritura de variables de Bootstrap 5 para que sus
@@ -37,7 +37,9 @@
   --bs-link-hover-color: var(--verde-udec);
 }
 
-* { box-sizing: border-box; }
+* { 
+  box-sizing: border-box; 
+}
 
 html, body {
   min-height: 100%;
@@ -50,7 +52,9 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-a { text-decoration: none; }
+a { 
+  text-decoration: none; 
+}
 
 /* ---- Botones: Bootstrap toma --bs-primary, pero el hover
    necesita el verde oscuro institucional ---- */
@@ -59,6 +63,7 @@ a { text-decoration: none; }
   border-color: var(--verde-medio);
   font-weight: 700;
 }
+
 .btn-primary:hover,
 .btn-primary:focus,
 .btn-primary:active {
@@ -70,6 +75,7 @@ a { text-decoration: none; }
   color: var(--verde-medio);
   border-color: var(--verde-medio);
 }
+
 .btn-outline-primary:hover {
   background-color: var(--verde-medio);
   border-color: var(--verde-medio);
@@ -79,8 +85,9 @@ a { text-decoration: none; }
 .form-control:focus,
 .form-select:focus {
   border-color: var(--verde-medio);
-  box-shadow: 0 0 0 0.2rem rgba(0, 123, 62, 0.15);
+  box-shadow: 0 0 0 0.2rem rgb(0 123 62 / 15%);
 }
+
 .form-label {
   font-size: .78rem;
   font-weight: 700;
@@ -93,7 +100,7 @@ a { text-decoration: none; }
    agregando la clase .invalid al contenedor del campo. */
 .invalid .form-control {
   border-color: var(--rojo-error);
-  box-shadow: 0 0 0 0.2rem rgba(192, 57, 43, 0.12);
+  box-shadow: 0 0 0 0.2rem rgb(192 57 43 / 12%);
 }
 
 /* ============================================================
@@ -122,6 +129,7 @@ a { text-decoration: none; }
   color: #fff;
   font-size: .82rem;
 }
+
 .topbar .btn-salir {
   background: transparent;
   border: 1px solid #ffffff40;
@@ -147,13 +155,16 @@ a { text-decoration: none; }
 .selector-contexto {
   position: relative;
 }
+
 .selector-contexto summary {
   cursor: pointer;
   list-style: none;
 }
+
 .selector-contexto summary::-webkit-details-marker {
   display: none;
 }
+
 .selector-contexto[open] summary {
   background: #ffffff26;
 }
@@ -164,11 +175,12 @@ a { text-decoration: none; }
   right: 0;
   background: #fff;
   border-radius: 9px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, .18);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
   padding: .4rem;
   min-width: 180px;
   z-index: 20;
 }
+
 .opcion-contexto {
   display: block;
   padding: .55rem .75rem;
@@ -177,10 +189,12 @@ a { text-decoration: none; }
   font-weight: 600;
   color: var(--gris);
 }
+
 .opcion-contexto:hover {
   background: #00482B0d;
   color: var(--verde-udec);
 }
+
 .opcion-contexto.activa {
   color: var(--verde-medio);
   background: #007B3E14;
@@ -197,7 +211,8 @@ a { text-decoration: none; }
   grid-template-columns: 250px 1fr;
   min-height: calc(100vh - 64px - 52px); /* topbar + footer aprox */
 }
-@media (max-width: 880px) {
+
+@media (width <= 880px) {
   .app-shell { grid-template-columns: 1fr; }
 }
 
@@ -205,6 +220,7 @@ a { text-decoration: none; }
   background: var(--verde-udec);
   padding: 1.4rem 1rem;
 }
+
 .sidebar .nav-link {
   color: #DDEAE0;
   font-weight: 600;
@@ -216,17 +232,21 @@ a { text-decoration: none; }
   align-items: center;
   gap: .55rem;
 }
+
 .sidebar .nav-link.bloqueado {
   color: #DDEAE099;
   cursor: not-allowed;
+
   /* Sin pointer-events: none: el <span> no tiene href, así que no
      navega igual, y así el hover sí muestra el tooltip del motivo. */
 }
+
 .sidebar .nav-link.bloqueado:hover,
 .sidebar .nav-link.bloqueado:focus {
   background: #ffffff0d;
   color: #DDEAE0CC;
 }
+
 .sidebar .nav-link.active,
 .sidebar .nav-link:hover {
   background: #ffffff1a;
@@ -246,6 +266,7 @@ footer.app-footer {
   font-size: .76rem;
   text-align: center;
 }
+
 footer.app-footer strong { color: #fff; }
 
 .footer-contacto {
@@ -253,6 +274,7 @@ footer.app-footer strong { color: #fff; }
   opacity: .85;
   font-size: .7rem;
 }
+
 .footer-contacto a {
   color: #fff;
   text-decoration: underline;
@@ -274,9 +296,23 @@ footer.app-footer strong { color: #fff; }
   margin-bottom: 1.2rem;
   border: 1px solid transparent;
 }
-.banner.error   { background: #C0392B14; color: var(--rojo-error);  border-color: #C0392B33; }
-.banner.success { background: #007B3E14; color: var(--verde-medio); border-color: #007B3E33; }
-.banner .ic { flex-shrink: 0; margin-top: .05rem; }
+
+.banner.error {
+  background: #C0392B14;
+  color: var(--rojo-error);
+  border-color: #C0392B33;
+}
+
+.banner.success {
+  background: #007B3E14;
+  color: var(--verde-medio);
+  border-color: #007B3E33;
+}
+
+.banner .ic {
+  flex-shrink: 0;
+  margin-top: .05rem;
+}
 
 .role-chip {
   display: inline-flex;
@@ -290,9 +326,15 @@ footer.app-footer strong { color: #fff; }
   border: 1px solid #ffffff26;
   color: #fff;
 }
-.role-chip .dot { width: 8px; height: 8px; border-radius: 50%; }
+
+.role-chip .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
 
 /* Chip de rol para usarse sobre fondo claro (tablas, tarjetas) */
+
 .chip-rol {
   display: inline-flex;
   align-items: center;
@@ -315,12 +357,30 @@ footer.app-footer strong { color: #fff; }
   font-size: .78rem;
   font-weight: 700;
 }
-.badge-estado.pendiente { background: var(--oro); color: #3a2d00; }
-.badge-estado.aprobada  { background: var(--verde-medio); color: #fff; }
-.badge-estado.rechazada { background: var(--rojo-error); color: #fff; }
-.badge-estado.anulada   { background: var(--gris); color: #fff; }
 
-.hidden { display: none !important; }
+.badge-estado.pendiente {
+  background: var(--oro);
+  color: #3a2d00;
+}
+
+.badge-estado.aprobada {
+  background: var(--verde-medio);
+  color: #fff;
+}
+
+.badge-estado.rechazada {
+  background: var(--rojo-error);
+  color: #fff;
+}
+
+.badge-estado.anulada {
+  background: var(--gris);
+  color: #fff;
+}
+
+.hidden {
+  display: none !important; 
+}
 
 /* ---- Tarjetas de detalle (propuesta, PGC, ficha, lineamientos) ----
    Antes vivían solo en dashboard.css, que únicamente carga
@@ -330,7 +390,7 @@ footer.app-footer strong { color: #fff; }
   background: #fff;
   border-radius: var(--bs-border-radius-lg);
   padding: 1.2rem 1.4rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, .06);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 6%);
   display: flex;
   flex-direction: column;
   gap: .3rem;

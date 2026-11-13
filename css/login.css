@@ -10,7 +10,8 @@
   display: grid;
   grid-template-columns: 1.05fr 1fr;
 }
-@media (max-width: 880px) {
+
+@media (width <= 880px) {
   .login-wrap { grid-template-columns: 1fr; }
   .brand-side { min-height: 220px; }
 }
@@ -25,6 +26,7 @@
   position: relative;
   overflow: hidden;
 }
+
 .brand-side::after {
   content: "";
   position: absolute;
@@ -33,6 +35,7 @@
   aspect-ratio: 1;
   background: radial-gradient(circle, #79c00022, transparent 70%);
 }
+
 .brand-side .eyebrow {
   font-size: .72rem;
   letter-spacing: .14em;
@@ -41,12 +44,14 @@
   color: var(--amarillo);
   margin-bottom: 1rem;
 }
+
 .brand-side h1 {
   font-weight: 800;
   font-size: clamp(2rem, 4vw, 2.7rem);
   line-height: 1.08;
   max-width: 20rem;
 }
+
 .brand-side p {
   margin-top: 1.1rem;
   max-width: 24rem;
@@ -54,6 +59,7 @@
   line-height: 1.6;
   color: #ddeae0;
 }
+
 .roles-preview {
   margin-top: 2.4rem;
   display: flex;
@@ -68,9 +74,24 @@
   justify-content: center;
   padding: clamp(2rem, 6vw, 3.5rem);
 }
-.login-card { width: 100%; max-width: 380px; }
-.login-card h2 { font-size: 1.5rem; font-weight: 800; color: var(--verde-udec); }
-.login-card .subt { font-size: .85rem; color: var(--gris); margin-top: .4rem; margin-bottom: 1.7rem; }
+
+.login-card {
+  width: 100%;
+  max-width: 380px;
+}
+
+.login-card h2 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--verde-udec);
+}
+
+.login-card .subt {
+  font-size: .85rem;
+  color: var(--gris);
+  margin-top: .4rem;
+  margin-bottom: 1.7rem;
+}
 
 .checkbox-row {
   display: flex;
@@ -79,4 +100,7 @@
   margin: .9rem 0 1.4rem;
   font-size: .8rem;
 }
-.checkbox-row input { accent-color: var(--verde-medio); }
+
+.checkbox-row input {
+  accent-color: var(--verde-medio);
+}
