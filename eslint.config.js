@@ -2,10 +2,12 @@ import js from "@eslint/js";
 import globals from "globals";
 
 export default [
-  { ignores: ["node_modules/**"] },
+  { ignores: ["node_modules/**", "coverage/**"] },
   js.configs.recommended,
-    {
-    files: ["**/*.js"],
+
+  // 1) Código del navegador (js/ y components/)
+  {
+    files: ["js/**/*.js", "components/**/*.js"],
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "script",
@@ -24,8 +26,6 @@ export default [
         ocultarBanner: "readonly",
         cerrarSesion: "readonly",
         decodificarJWT: "readonly",
-          
-        // Nuevos en sprint-5
         estaAutenticado: "readonly",
         listaChips: "readonly",
         aplanarOpciones: "readonly",
@@ -43,6 +43,27 @@ export default [
       "no-redeclare": ["error", { builtinGlobals: false }],
     },
   },
+
+  // 2) Pruebas (Jest)
+  {
+    files: ["tests/**/*.js", "tests/**/*.cjs"],
+    languageOptions: {
+      ecmaVersion: "latest",
+      sourceType: "commonjs",
+      globals: {
+        ...globals.node,
+        ...globals.jest,
+        ...globals.browser,
+      },
+    },
+    rules: {
+      "no-unused-vars": "off",
+      // Los tests cargan los scripts de js/ dinámicamente
+      "no-undef": "off",
+    },
+  },
+
+  // 3) El propio archivo de configuración
   {
     files: ["eslint.config.js"],
     languageOptions: {
