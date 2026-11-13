@@ -37,3 +37,6 @@ jobs:
 
       - name: Lint de CSS
         run: npm run lint:css
+
+      - name: Ejecutar pruebas unitarias y verificar cobertura
+        run: npm run cobertura
