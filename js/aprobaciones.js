@@ -19,10 +19,10 @@ function pintarTabla() {
     .map(
       (propuesta) => `
       <tr>
-        <td>${propuesta.title_proposal}</td>
-        <td>${propuesta.leader_name}</td>
-        <td>${propuesta.num_integrantes}</td>
-        <td>${propuesta.ciclo}</td>
+        <td>${escaparHtml(propuesta.title_proposal)}</td>
+        <td>${escaparHtml(propuesta.leader_name)}</td>
+        <td>${escaparHtml(propuesta.num_integrantes)}</td>
+        <td>${escaparHtml(propuesta.ciclo)}</td>
         <td class="text-end">
           <button class="btn btn-sm btn-outline-primary" onclick="abrirDetalle(${propuesta.id_proposal})">Ver detalle</button>
         </td>
@@ -66,8 +66,27 @@ async function abrirDetalle(id) {
   document.getElementById("comentario-rechazo").value = "";
   document.getElementById("btn-mostrar-rechazo").classList.remove("d-none");
   document.getElementById("btn-confirmar-rechazo").classList.add("d-none");
+  mostrarConfirmacionAprobacion(false);
 
   modalDetalle.show();
+}
+
+/**
+ * Muestra u oculta el paso de confirmación de "Aprobar". Mientras se
+ * confirma se esconden Aprobar/Rechazar para que no se mezclen las acciones.
+ */
+function mostrarConfirmacionAprobacion(visible) {
+  document.getElementById("zona-confirmar-aprobacion").classList.toggle("hidden", !visible);
+  document.getElementById("btn-confirmar-aprobacion").classList.toggle("d-none", !visible);
+  document.getElementById("btn-cancelar-aprobacion").classList.toggle("d-none", !visible);
+  document.getElementById("btn-aprobar").classList.toggle("d-none", visible);
+  document.getElementById("btn-mostrar-rechazo").classList.toggle("d-none", visible);
+  if (visible) {
+    // Si estaba abierta la zona de rechazo, se cierra.
+    document.getElementById("zona-rechazo").classList.add("hidden");
+    document.getElementById("btn-confirmar-rechazo").classList.add("d-none");
+    document.getElementById("btn-confirmar-aprobacion").focus();
+  }
 }
 
 
@@ -85,26 +104,43 @@ async function inicializarAprobaciones() {
   // El ciclo del encargado se obtiene del JWT decodificado
   try {
     const usuario = obtenerUsuario();
-    // El encargado tiene en su JWT el campo encargado_de con el ciclo asignado
-    const id_cycle = usuario && usuario.encargado_de ? usuario.encargado_de[0] : null;
+    // El encargado tiene en su JWT el arreglo encargado_de con TODOS sus ciclos;
+    // antes solo se consultaba el primero, ahora se juntan las pendientes de cada uno.
+    const ciclos = usuario && usuario.encargado_de ? usuario.encargado_de : [];
 
-    if (!id_cycle) {
+    if (ciclos.length === 0) {
       mostrarBanner("banner", "error", "No tienes un ciclo asignado como encargado.");
       return;
     }
 
-    const res = await peticionApi(`/propuestas?cycle=${id_cycle}&estado=Pendiente de validación`);
-    if (!res.ok) throw new Error();
-    propuestas = await res.json();
+    const listas = await Promise.all(
+      ciclos.map(async (id_cycle) => {
+        const estado = encodeURIComponent("Pendiente de validación");
+        const res = await peticionApi(`/propuestas?cycle=${id_cycle}&estado=${estado}`);
+        if (!res.ok) throw new Error();
+        return res.json();
+      })
+    );
+    propuestas = listas.flat();
   } catch {
     mostrarBanner("banner", "error", "No fue posible cargar las propuestas. Intenta recargar la página.");
   }
 
   pintarTabla();
 
-  // ── Aprobar ───────────────────────────────────────────────
-  document.getElementById("btn-aprobar").addEventListener("click", async () => {
-    const boton = document.getElementById("btn-aprobar");
+  // ── Aprobar (paso 1): pide confirmación ───────────────────
+  document.getElementById("btn-aprobar").addEventListener("click", () => {
+    mostrarConfirmacionAprobacion(true);
+  });
+
+  // ── Cancelar la aprobación ────────────────────────────────
+  document.getElementById("btn-cancelar-aprobacion").addEventListener("click", () => {
+    mostrarConfirmacionAprobacion(false);
+  });
+
+  // ── Aprobar (paso 2): confirmado, se envía al backend ─────
+  document.getElementById("btn-confirmar-aprobacion").addEventListener("click", async () => {
+    const boton = document.getElementById("btn-confirmar-aprobacion");
     boton.disabled = true;
     boton.textContent = "Aprobando...";
 
@@ -125,12 +161,14 @@ async function inicializarAprobaciones() {
       mostrarBanner("banner", "error", "No fue posible conectar con el servidor.");
     } finally {
       boton.disabled = false;
-      boton.textContent = "Aprobar";
+      boton.textContent = "Sí, aprobar";
+      mostrarConfirmacionAprobacion(false);
     }
   });
 
   // ── Mostrar zona de rechazo ───────────────────────────────
   document.getElementById("btn-mostrar-rechazo").addEventListener("click", () => {
+    mostrarConfirmacionAprobacion(false);
     document.getElementById("zona-rechazo").classList.remove("hidden");
     document.getElementById("btn-mostrar-rechazo").classList.add("d-none");
     document.getElementById("btn-confirmar-rechazo").classList.remove("d-none");

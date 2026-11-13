@@ -49,10 +49,10 @@ function pintarPropuestasAprobadas() {
       <table class="table align-middle bg-white">
         <thead>
           <tr>
-            <th>Título</th>
-            <th>Ciclo</th>
-            <th>Categorías</th>
-            <th></th>
+            <th scope="col">Título</th>
+            <th scope="col">Ciclo</th>
+            <th scope="col">Categorías</th>
+            <th scope="col"><span class="visually-hidden">Acciones</span></th>
           </tr>
         </thead>
         <tbody>${filas}</tbody>

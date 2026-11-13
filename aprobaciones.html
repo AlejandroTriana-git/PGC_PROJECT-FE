@@ -28,11 +28,11 @@
         <table class="table align-middle bg-white">
           <thead>
             <tr>
-              <th>Título</th>
-              <th>Líder</th>
-              <th>Integrantes</th>
-              <th>Ciclo</th>
-              <th></th>
+              <th scope="col">Título</th>
+              <th scope="col">Líder</th>
+              <th scope="col">Integrantes</th>
+              <th scope="col">Ciclo</th>
+              <th scope="col"><span class="visually-hidden">Acciones</span></th>
             </tr>
           </thead>
           <tbody id="tabla-propuestas"></tbody>
@@ -62,13 +62,26 @@
           <p><strong>Solución propuesta:</strong> <span id="detalle-solucion" style="white-space:pre-wrap;"></span></p>
           <p id="detalle-pdf-contenedor"></p>
 
+          <!-- Confirmación de aprobación: aprobar no se puede deshacer -->
+          <div id="zona-confirmar-aprobacion" class="hidden mt-3 p-3 border rounded" role="alert">
+            <p class="mb-1"><strong>¿Seguro que deseas aprobar esta propuesta?</strong></p>
+            <p class="mb-0 text-muted" style="font-size:.85rem;">
+              Al aprobarla, el equipo podrá registrar su PGC. Esta acción no se puede deshacer.
+            </p>
+          </div>
+
+          <!-- Rechazo: el comentario es obligatorio (HU-08) -->
           <div id="zona-rechazo" class="hidden mt-3">
-            <label for="comentario-rechazo" class="form-label">Comentario (obligatorio para rechazar)</label>
-            <textarea class="form-control" id="comentario-rechazo" rows="3"></textarea>
+            <label for="comentario-rechazo" class="form-label">Motivo del rechazo (obligatorio)</label>
+            <textarea class="form-control" id="comentario-rechazo" rows="3"
+                      placeholder="Explica al equipo qué debe corregir antes de reenviar."></textarea>
+            <div class="invalid-feedback">Debes escribir el motivo del rechazo.</div>
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-outline-primary" id="btn-mostrar-rechazo">Rechazar</button>
+          <button type="button" class="btn btn-outline-secondary d-none" id="btn-cancelar-aprobacion">Cancelar</button>
+          <button type="button" class="btn btn-primary d-none" id="btn-confirmar-aprobacion">Sí, aprobar</button>
+          <button type="button" class="btn btn-outline-danger" id="btn-mostrar-rechazo">Rechazar</button>
           <button type="button" class="btn btn-danger d-none" id="btn-confirmar-rechazo">Confirmar rechazo</button>
           <button type="button" class="btn btn-primary" id="btn-aprobar">Aprobar</button>
         </div>

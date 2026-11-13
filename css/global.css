@@ -35,6 +35,10 @@
   --bs-border-radius-lg: 12px;
   --bs-link-color: var(--verde-medio);
   --bs-link-hover-color: var(--verde-udec);
+
+  /* Bootstrap pinta los enlaces con las variables -rgb: sin ellas salían azules */
+  --bs-link-color-rgb: 0, 123, 62;
+  --bs-link-hover-color-rgb: 0, 72, 43;
 }
 
 * { 
@@ -253,6 +257,28 @@ a {
   color: #fff;
 }
 
+
+/* ---- Grupos desplegables del menú lateral ---- */
+.sidebar details.grupo-menu { margin-bottom: .25rem; }
+
+.sidebar details.grupo-menu > summary {
+  cursor: pointer;
+  list-style: none;
+  justify-content: space-between;
+}
+.sidebar details.grupo-menu > summary::-webkit-details-marker { display: none; }
+.sidebar details.grupo-menu > summary::after { content: "▾"; font-size: .8rem; }
+.sidebar details.grupo-menu[open] > summary::after { content: "▴"; }
+.sidebar .grupo-menu-items { padding-left: .9rem; margin-top: .15rem; }
+.sidebar .grupo-menu-items .nav-link { font-size: .84rem; }
+
+.sidebar .nav-link:focus-visible,
+.sidebar details.grupo-menu > summary:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+
 .main-content {
   padding: clamp(1.25rem, 4vw, 2.5rem);
 }
@@ -298,13 +324,13 @@ footer.app-footer strong { color: #fff; }
 }
 
 .banner.error {
-  background: #C0392B14;
+  background: linear-gradient(#C0392B14, #C0392B14), #fff;
   color: var(--rojo-error);
   border-color: #C0392B33;
 }
 
 .banner.success {
-  background: #007B3E14;
+  background: linear-gradient(#007B3E14, #007B3E14), #fff;
   color: var(--verde-medio);
   border-color: #007B3E33;
 }
@@ -356,6 +382,7 @@ footer.app-footer strong { color: #fff; }
   border-radius: 100px;
   font-size: .78rem;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .badge-estado.pendiente {
@@ -411,4 +438,203 @@ footer.app-footer strong { color: #fff; }
 .label + p,
 .label + div {
   font-weight: 400;
+}
+
+
+/* ---- Pancarta de fechas del inicio (Issue 12) ---- */
+.pancarta-lista { list-style: none; padding: 0; margin: 0; display: grid; gap: .75rem; }
+
+.pancarta {
+  border-radius: var(--bs-border-radius-lg);
+  padding: 1rem 1.25rem;
+  border-left: 6px solid;
+}
+.pancarta-habilitada { background: #007B3E14; border-left-color: var(--verde-medio); }
+.pancarta-proxima    { background: #DAAA0026; border-left-color: var(--oro); }
+
+.pancarta-estado {
+  display: block;
+  font-size: .72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  margin-bottom: .25rem;
+}
+.pancarta-habilitada .pancarta-estado { color: var(--verde-udec); }
+.pancarta-proxima .pancarta-estado    { color: #3a2d00; }
+.pancarta-texto { margin: 0; font-size: .95rem; color: var(--gris); }
+
+
+/* ---- Enlace "Saltar al contenido principal" (WCAG 2.4.1) ---- */
+.saltar-contenido {
+  position: absolute;
+  left: 1rem;
+  top: -4rem;
+  z-index: 2000;
+  background: #fff;
+  color: var(--verde-udec);
+  font-weight: 700;
+  padding: .6rem 1rem;
+  border-radius: 9px;
+}
+.saltar-contenido:focus { top: 1rem; }
+main:focus { outline: none; }
+
+
+
+/* ---- Piezas reutilizables de las pantallas "Mi propuesta" / "Mi PGC" (Issue 11) ---- */
+.pgc-cabecera {
+  background: #fff;
+  border-top: 5px solid var(--verde-medio);
+  border-radius: var(--bs-border-radius-lg);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.25rem;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 6%);
+}
+
+.pgc-cabecera h2 {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--verde-udec);
+  margin: 0 0 .6rem;
+}
+
+.titulo-seccion { font-size: 1rem; font-weight: 700; color: var(--verde-udec); margin-bottom: .75rem; }
+
+.campo-bloque {
+  background: #fff;
+  border: 1px solid #E3E8E4;
+  border-radius: var(--bs-border-radius-lg);
+  padding: 1rem 1.15rem;
+}
+
+.campo-etiqueta {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  font-size: .78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--verde-udec);
+  margin-bottom: .45rem;
+}
+.campo-texto { margin: 0; white-space: pre-wrap; line-height: 1.55; }
+
+.lista-chips { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: .4rem; }
+
+.chip-dato {
+  background: #007B3E14;
+  color: var(--verde-udec);
+  border: 1px solid #007B3E33;
+  border-radius: 100px;
+  padding: .25rem .75rem;
+  font-size: .82rem;
+  font-weight: 600;
+}
+
+.pestanas .nav-link { color: var(--gris); font-weight: 700; }
+.pestanas .nav-link:hover { color: var(--verde-medio); }
+.pestanas .nav-link.active { color: var(--verde-udec); box-shadow: inset 0 -3px 0 var(--verde-medio); }
+
+.contador {
+  display: inline-block;
+  min-width: 1.4rem;
+  margin-left: .45rem;
+  padding: .05rem .45rem;
+  border-radius: 100px;
+  background: var(--verde-udec);
+  color: #fff;
+  font-size: .72rem;
+  text-align: center;
+}
+
+.nota-global {
+  background: #007B3E14;
+  border-radius: var(--bs-border-radius-lg);
+  padding: 1rem 1.25rem;
+}
+.nota-valor { margin: 0; font-size: 2rem; font-weight: 800; color: var(--verde-udec); }
+
+/* ---- Páginas públicas (buscar PGC y ficha sin iniciar sesión) ----
+   Sin sesión no hay menú lateral: el contenido ocupa todo el ancho. */
+.app-shell.sin-sidebar { grid-template-columns: 1fr; }
+
+.app-shell.sin-sidebar .main-content {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.topbar .btn-ingresar {
+  background: #fff;
+  color: var(--verde-udec);
+  border-radius: 7px;
+  padding: .4rem .9rem;
+  font-size: .8rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+.topbar .btn-ingresar:hover { background: #EAF3EC; }
+
+.aviso-visitante {
+  background: #007B3E0D;
+  border: 1px solid #007B3E33;
+  border-radius: var(--bs-border-radius-lg);
+  padding: .7rem 1rem;
+  font-size: .85rem;
+  margin-bottom: 1.25rem;
+}
+
+/* ---- Buscador de PGC (HU-04): mismo lenguaje visual que la ficha / Mi PGC ---- */
+.panel-filtros {
+  background: #fff;
+  border-top: 5px solid var(--verde-medio);
+  border-radius: var(--bs-border-radius-lg);
+  padding: 1.1rem 1.25rem;
+  margin-bottom: 1.25rem;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 6%);
+}
+
+.panel-resultados {
+  background: #fff;
+  border: 1px solid #E3E8E4;
+  border-radius: var(--bs-border-radius-lg);
+  overflow: hidden;
+}
+.panel-resultados .table { margin-bottom: 0; }
+
+.panel-resultados thead th {
+  background: #007B3E0D;
+  color: var(--verde-udec);
+  font-size: .78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  border-bottom: 1px solid #E3E8E4;
+}
+.panel-resultados td, .panel-resultados th { padding: .8rem 1rem; }
+.resumen-resultados { font-size: .85rem; color: var(--gris); margin-bottom: .6rem; }
+.titulo-resultado { font-weight: 700; color: var(--verde-udec); text-decoration: none; }
+.titulo-resultado:hover { text-decoration: underline; }
+
+/* Cabecera de la ficha: ciclo + estado en una línea */
+.pgc-cabecera-meta { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+
+
+/* ---- Ajustes visuales generales ---- */
+
+/* Las insignias y botones de tabla no se parten en dos líneas ("En / Proceso") */
+
+
+
+.panel-resultados .btn { white-space: nowrap; }
+
+/* El menú lateral ocupa todo el alto de la página, no solo el de sus opciones */
+#sidebar > .sidebar { height: 100%; }
+
+/* En celular el topbar baja los datos del usuario a otra línea en vez de desbordarse */
+@media (width <= 640px) {
+  .topbar { flex-wrap: wrap; }
+  .topbar .usuario-box { flex-wrap: wrap; justify-content: flex-end; }
 }

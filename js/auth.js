@@ -145,10 +145,39 @@ function cerrarSesion(mensaje) {
   window.location.href = destino;
 }
 
+
+/**
+ * Cierre de sesión pedido por el usuario (botón "Cerrar sesión").
+ * Primero invalida el token en el servidor (blacklist) y SIEMPRE termina
+ * limpiando el token local y yendo al login, incluso si la petición falla
+ * (sin red, token ya vencido, endpoint no disponible): el usuario nunca
+ * debe quedarse atrapado en una sesión que quiso cerrar.
+ *
+ * Usa fetch directo y no peticionApi: ante un 401, peticionApi llama a
+ * cerrarSesion() y eso sería un bucle. Para los cierres forzados (sesión
+ * vencida, ruta protegida) se sigue usando cerrarSesion(), que no avisa al
+ * servidor porque ese token ya no sirve.
+ */
+async function cerrarSesionUsuario() {
+  const token = obtenerToken();
+  if (token) {
+    try {
+      await fetch(`${URL_API}/auth/logout`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    } catch {
+      // Sin conexión: igual se cierra la sesión localmente.
+    }
+  }
+  cerrarSesion();
+}
+
+
 /**
  * "Middleware" de rutas protegidas del lado del frontend.
  * Se llama al inicio de cada página que requiera sesión
- * (dashboard, usuarios, reportes, perfil). Si no hay sesión
+ * (dashboard, usuarios...). Si no hay sesión
  * válida, redirige al login con el mensaje del HU-01.
  */
 function requerirAutenticacion() {
@@ -176,7 +205,7 @@ function requerirCapacidad(capacidad) {
 /**
  * Bloquea el acceso a una página reservada a uno o varios roles
  * puntuales (ej. "administrador" para usuarios.html, o
- * ["profesor", "administrador"] para reportes.html, que la ven
+ * ["profesor", "administrador"] para una página que vean
  * ambos roles). Acepta un string o un arreglo. Reutiliza
  * requerirAutenticacion() y compara el rol ya traducido de
  * obtenerUsuario(). Si no coincide, lo devuelve a su dashboard.

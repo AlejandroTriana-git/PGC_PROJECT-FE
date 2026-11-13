@@ -43,7 +43,6 @@ function pintarTablaCiclos() {
         <td>${escaparHtml((ciclo.jurados || []).map((id_jurado) => nombreProfesor(id_jurado)).join(", ")) || "Sin asignar"}</td>
         <td class="text-end">
           <button class="btn btn-sm btn-outline-primary" onclick="abrirEdicionCiclo(${ciclo.id})">Editar</button>
-          <a class="btn btn-sm btn-outline-secondary" href="lineamientos.html?ciclo=${ciclo.id}">Lineamientos</a>
         </td>
       </tr>`
     )
@@ -166,6 +165,17 @@ async function inicializarCiclos() {
         }
       }
 
+      // 3️⃣ DELETE /ciclos/:id/jurados/:id_jurado — quitar los que se desmarcaron
+      const juradosQuitados = (cicloSeleccionado.jurados || []).filter((id) => !idsJurados.includes(id));
+      for (const idJurado of juradosQuitados) {
+        const resQuitar = await peticionApi(`/ciclos/${cicloSeleccionado.id}/jurados/${idJurado}`, { method: "DELETE" });
+        if (!resQuitar.ok) {
+          const jsonQuitar = await resQuitar.json().catch(() => ({}));
+          mostrarBanner("banner", "error", jsonQuitar.mensaje || "Ciclo guardado, pero no se pudo quitar un jurado.");
+          return;
+        }
+      }
+
       mostrarBanner("banner", "success", `${nombreCiclo(cicloSeleccionado)} actualizado.`);
 
       // Actualiza el dato local con lo que devolvió el BE (mismo contrato que GET /ciclos)
@@ -174,7 +184,7 @@ async function inicializarCiclos() {
         ciclos[idx] = {
           ...ciclos[idx],
           ...(jsonCiclo && jsonCiclo.id ? jsonCiclo : { max_members: maxIntegrantes, id_encargado: idEncargado }),
-          jurados: [...new Set([...(ciclos[idx].jurados || []), ...idsJurados])],
+          jurados: idsJurados, // quedan exactamente los marcados (asignados + quitados ya aplicados)
         };
       }
       pintarTablaCiclos();

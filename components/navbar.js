@@ -28,7 +28,7 @@ const ETIQUETA_BASE = {
 const CONTEXTOS_PROFESOR = {
   profesor: { label: "Profesor", home: "dashboard.html" },
   encargado: { label: "Encargado de Ciclo", home: "aprobaciones.html" },
-  jurado: { label: "Jurado", home: "evaluaciones.html" },
+  jurado: { label: "Jurado", home: "calificar.html" },
 };
 
 /** Cambia el contexto activo y navega a su página principal. */
@@ -94,22 +94,33 @@ function renderizarBarraSuperior(idContenedor) {
   const elemento = document.getElementById(idContenedor);
   if (!elemento) return;
 
-  const usuario = typeof obtenerUsuario === "function" ? obtenerUsuario() : null;
+  // Solo se muestra el usuario si la sesión sigue vigente: en las páginas
+  // públicas (buscar PGC / ficha) un token vencido no debe pintarse como sesión.
+  const usuario = typeof obtenerUsuario === "function" && estaAutenticado() ? obtenerUsuario() : null;
+
+  // El <main> de cada página recibe el id al que apunta el enlace "saltar".
+  // tabindex=-1 permite que reciba el foco al activarlo, sin entrar al orden de Tab.
+  const principal = document.querySelector("main");
+  if (principal) {
+    principal.id = "contenido-principal";
+    principal.setAttribute("tabindex", "-1");
+  }
 
   elemento.innerHTML = `
+    <a class="saltar-contenido" href="#contenido-principal">Saltar al contenido principal</a>
     <div class="topbar">
-  
-          <img src="assets/logos/logosimbolo-blanco.png" alt="Universidad de Cundinamarca" class="logo-topbar">
+
+      <img src="assets/logos/logosimbolo-blanco.png" alt="Universidad de Cundinamarca" class="logo-topbar">
 
       ${
         usuario
           ? `<div class="usuario-box">
               <span>${escaparHtml(usuario.nombre || usuario.correo || "Usuario")}</span>
               ${construirChipsUsuario(usuario)}
-              <button class="btn-salir" onclick="cerrarSesion()">Cerrar sesión</button>
+              <button class="btn-salir" onclick="this.disabled = true; cerrarSesionUsuario()">Cerrar sesión</button>
             </div>`
-          : ""
+          : `<a class="btn-ingresar" href="index.html">Iniciar sesión</a>`
       }
     </div>
   `;
-}
+} 

@@ -24,6 +24,18 @@ export default [
         ocultarBanner: "readonly",
         cerrarSesion: "readonly",
         decodificarJWT: "readonly",
+          
+        // Nuevos en sprint-5
+        estaAutenticado: "readonly",
+        listaChips: "readonly",
+        aplanarOpciones: "readonly",
+        construirMenu: "readonly",
+        obtenerOpcionesOcultas: "readonly",
+        bloqueTexto: "readonly",
+        bloqueCampo: "readonly",
+        crearListaDocumento: "readonly",
+        validarCampos: "readonly",
+        enfocarBanner: "readonly",
       },
     },
     rules: {

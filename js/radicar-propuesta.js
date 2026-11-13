@@ -203,20 +203,20 @@ async function inicializarRadicarPropuesta() {
       .filter((e) => document.getElementById(`integrante-${e.id_user}`)?.checked)
       .map((e) => e.id_user);
 
-    if (!titulo || !descripcion || !problema || !justificacion || !objetivos || !solucion) {
-      mostrarBanner("banner", "error", "Debes completar todos los campos.");
-      return;
-    }
-    if (categorias.length === 0) {
-      mostrarBanner("banner", "error", "Debes seleccionar al menos una categoría.");
-      return;
-    }
-
-    const errorPdf = validarPdf(archivoPdf);
-    if (errorPdf) {
-      mostrarBanner("banner", "error", errorPdf);
-      return;
-    }
+    const campos_ok = validarCampos(
+      [
+        { id: "titulo", error: titulo ? null : "El título es obligatorio." },
+        { id: "lista-categorias", error: categorias.length > 0 ? null : "Selecciona al menos una categoría." },
+        { id: "descripcion", error: descripcion ? null : "La descripción es obligatoria." },
+        { id: "problema", error: problema ? null : "El problema es obligatorio." },
+        { id: "justificacion", error: justificacion ? null : "La justificación es obligatoria." },
+        { id: "objetivos", error: objetivos ? null : "Los objetivos son obligatorios." },
+        { id: "solucion", error: solucion ? null : "La solución propuesta es obligatoria." },
+        { id: "pdf", error: validarPdf(archivoPdf) },
+      ],
+      "banner"
+    );
+    if (!campos_ok) return;
 
     const boton = document.getElementById("btn-radicar");
     boton.disabled = true;

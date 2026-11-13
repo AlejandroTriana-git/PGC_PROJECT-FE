@@ -18,9 +18,9 @@
     <div id="sidebar"></div>
 
     <main class="main-content">
-      <a href="buscarPgc.html" class="d-inline-block mb-3" style="font-size:.85rem;color:var(--verde-medio);font-weight:600;">← Volver a la búsqueda</a>
+      <a href="buscarPgc.html" id="enlace-volver" class="d-inline-block mb-3" style="font-size:.85rem;color:var(--verde-medio);font-weight:600;">← Volver a la búsqueda</a>
 
-      <div id="contenedor-ficha" style="max-width: 900px;"></div>
+      <div id="contenedor-ficha"></div>
     </main>
   </div>
 
@@ -34,9 +34,9 @@
   <script src="components/footer.js"></script>
   <script src="js/fichaPgc.js"></script>
   <script>
-    requerirAutenticacion();
+    // Página PÚBLICA (punto 5): la ficha se puede ver sin iniciar sesión.
     renderizarBarraSuperior("topbar");
-    renderizarBarraLateral("sidebar", "buscarPgc");
+    renderizarBarraLateralOpcional("sidebar", "buscarPgc");
     renderizarPiePagina("footer");
     inicializarFichaPgc();
   </script>
