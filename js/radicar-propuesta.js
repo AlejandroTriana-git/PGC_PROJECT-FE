@@ -173,8 +173,7 @@ async function inicializarRadicarPropuesta() {
     return;
   }
 
-  pintarCategorias();
-  pintarIntegrantes();
+  await Promise.all([pintarCategorias(), pintarIntegrantes()]);
 
   document.getElementById("form-propuesta").addEventListener("submit", async (evento) => {
     evento.preventDefault();

@@ -45,7 +45,7 @@ function crearListaDocumento(config) {
        <div class="modal-dialog">
          <div class="modal-content">
            <div class="modal-header">
-             <h5 class="modal-title" id="${id_modal}-titulo"></h5>
+             <h5 class="modal-title" id="${id_modal}-titulo">Historial</h5>
              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
            </div>
            <div class="modal-body" id="${id_modal}-cuerpo"></div>
@@ -84,7 +84,7 @@ function crearListaDocumento(config) {
   /** Sugerencia de la siguiente versión a partir de la vigente ("V2.0" → "3.0"). */
   function siguienteVersion(version_actual) {
     const numero = String(version_actual ?? "").replace(/^v\s*/i, "");
-    const mayor = parseInt(numero, 10);
+    const mayor = Number.parseInt(numero, 10);
     if (Number.isNaN(mayor)) return "1.0";
     const tiene_decimal = numero.includes(".");
     return tiene_decimal ? `${mayor + 1}.0` : String(mayor + 1);
@@ -302,7 +302,7 @@ function crearListaDocumento(config) {
   }
 
   // ── Eventos delegados: un solo listener, sin onclick en el HTML ──────────
-  contenedor.addEventListener("click", (evento) => {
+  contenedor.addEventListener("click", async (evento) => {
     const control = evento.target.closest("[data-accion]");
     if (!control) return;
 
@@ -326,7 +326,7 @@ function crearListaDocumento(config) {
       zona_lista.querySelector(`[data-accion="mostrar-actualizar"][data-id="${id}"]`).classList.remove("hidden");
     } else if (accion === "historial") {
       const doc = documentos.find((d) => String(d.id_document) === id);
-      if (doc) abrirHistorial(doc.title_file);
+      if (doc) await abrirHistorial(doc.title_file);
     }
   });
 

@@ -61,14 +61,14 @@ async function pintarSelectorCiclo(ciclos) {
       ${ciclos.map((id) => `<option value="${escaparHtml(id)}">${escaparHtml(nombre(id))}</option>`).join("")}
     </select>`;
 
-  document.getElementById("selector-ciclo").addEventListener("change", (evento) => {
+  document.getElementById("selector-ciclo").addEventListener("change", async (evento) => {
     ciclo_actual = Number(evento.target.value);
     ocultarBanner("banner");
-    lista_rubrica.recargar();
+    await lista_rubrica.recargar();
   });
 }
 
-function inicializarRubrica() {
+async function inicializarRubrica() {
   const usuario = obtenerUsuario();
   const ciclos = obtenerCiclosConsultables(usuario);
 
@@ -91,6 +91,5 @@ function inicializarRubrica() {
       `/ciclos/${ciclo_actual}/documentos/${encodeURIComponent(titulo)}/historial?tipo=${encodeURIComponent(TIPO_RUBRICA)}`,
   });
 
-  pintarSelectorCiclo(ciclos);
-  lista_rubrica.recargar();
+  await Promise.all([pintarSelectorCiclo(ciclos), lista_rubrica.recargar()]);
 }

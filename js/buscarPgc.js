@@ -93,13 +93,13 @@ function pintarPaginacion(pagina_actual_resp, total_paginas) {
     </button>
   `;
 
-  document.getElementById("btn-pagina-anterior")?.addEventListener("click", () => {
+  document.getElementById("btn-pagina-anterior")?.addEventListener("click", async () => {
     pagina_actual -= 1;
-    ejecutarBusqueda();
+    await ejecutarBusqueda();
   });
-  document.getElementById("btn-pagina-siguiente")?.addEventListener("click", () => {
+  document.getElementById("btn-pagina-siguiente")?.addEventListener("click", async () => {
     pagina_actual += 1;
-    ejecutarBusqueda();
+    await ejecutarBusqueda();
   });
 }
 
@@ -166,18 +166,18 @@ function aplicarFiltrosDeUrl() {
   asignar("filtro-categoria", parametros.get("categoria"));
   asignar("filtro-ciclo", parametros.get("ciclo"));
   asignar("filtro-estado", parametros.get("estado"));
-  const pagina = parseInt(parametros.get("pagina"), 10);
+  const pagina = Number.parseInt(parametros.get("pagina"), 10);
   if (pagina > 0) pagina_actual = pagina;
 }
 
 async function inicializarBuscarPgc() {
   await cargarFiltros(); // primero las opciones, para poder marcar las de la URL
   aplicarFiltrosDeUrl();
-  ejecutarBusqueda();
+  await ejecutarBusqueda();
 
-  document.getElementById("form-busqueda").addEventListener("submit", (evento) => {
+  document.getElementById("form-busqueda").addEventListener("submit", async (evento) => {
     evento.preventDefault();
     pagina_actual = 1; // toda búsqueda nueva reinicia la paginación
-    ejecutarBusqueda();
+    await ejecutarBusqueda();
   });
 }

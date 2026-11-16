@@ -62,7 +62,7 @@ function enviarFormulario(form) {
 
 // ── JWT de prueba ────────────────────────────────────────────
 function base64Url(texto) {
-  return Buffer.from(texto, "utf8").toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  return Buffer.from(texto, "utf8").toString("base64url"); // base64url ya viene sin relleno "="
 }
 
 /** Crea un JWT (sin firma real) con el payload dado. exp por defecto: +1 h. */

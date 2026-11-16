@@ -7,7 +7,7 @@
 // components/listaDocumento.js, la misma que usa rubrica.html.
 // ============================================================
 
-function inicializarLineamiento() {
+async function inicializarLineamiento() {
   const usuario = obtenerUsuario();
 
   const lista_lineamiento = crearListaDocumento({
@@ -20,5 +20,5 @@ function inicializarLineamiento() {
     rutaHistorial: (titulo) => `/lineamientos/${encodeURIComponent(titulo)}/historial`,
   });
 
-  lista_lineamiento.recargar();
+  await lista_lineamiento.recargar();
 }
