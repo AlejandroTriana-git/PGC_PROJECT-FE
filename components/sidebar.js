@@ -234,7 +234,7 @@ async function renderizarBarraLateral(idContenedor, paginaActiva) {
  */
 function renderizarBarraLateralOpcional(idContenedor, paginaActiva) {
   if (estaAutenticado()) {
-    renderizarBarraLateral(idContenedor, paginaActiva);
+    renderizarBarraLateral(idContenedor, paginaActiva).catch(console.error);
     return true;
   }
   const elemento = document.getElementById(idContenedor);

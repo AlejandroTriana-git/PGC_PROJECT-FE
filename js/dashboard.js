@@ -312,7 +312,7 @@ async function pintarAccesos(usuario) {
     .join("");
 }
 
-function inicializarPanel() {
+async function inicializarPanel() {
   const usuario = obtenerUsuario();
   if (!usuario) return;
 
@@ -324,6 +324,5 @@ function inicializarPanel() {
   if (clave === "profesor" && (usuario.encargado_de.length || usuario.jurado_de.length)) clave = "profesor_con_capacidades";
   document.getElementById("subtitulo-panel").textContent = SUBTITULO_PANEL[clave] || "";
 
-  pintarResumen(usuario);
-  pintarAccesos(usuario);
+  await Promise.all([pintarResumen(usuario), pintarAccesos(usuario)]);
 }

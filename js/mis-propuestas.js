@@ -330,11 +330,13 @@ async function inicializarMiPropuesta(mensaje_exito) {
 
   // Cargar integrantes, categorías y conectar el submit solo si aplica.
   if (puedeReenviar) {
-    pintarIntegrantesReenvio(propuesta.integrantes || []);
-    pintarCategoriasReenvio(propuesta.categorias || []);
     document.getElementById("form-reenvio").addEventListener("submit", (ev) =>
       manejarReenvio(ev, propuesta)
     );
+    await Promise.all([
+      pintarIntegrantesReenvio(propuesta.integrantes || []),
+      pintarCategoriasReenvio(propuesta.categorias || []),
+    ]);
   }
 }
 
