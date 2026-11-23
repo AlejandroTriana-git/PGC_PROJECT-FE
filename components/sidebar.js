@@ -44,14 +44,21 @@ const MENU_BASE_POR_ROL = {
     },
     { id: "buscarPgc", label: "Buscar PGC", href: "buscarPgc.html" },
     { id: "lineamiento", label: "Lineamientos", href: "lineamiento.html" },
+    { id: "reportes", label: "Reportes", href: "reportes.html" },
   ],
 };
+
+// El informe de avance (reportes.html) lo autoriza el backend para
+// cualquier Profesor, sin importar el contexto activo (Profesor/
+// Encargado/Jurado) — por eso aparece en los tres menús de abajo.
+const OPCION_REPORTES = { id: "reportes", label: "Reportes", href: "reportes.html" };
 
 const MENU_POR_CONTEXTO = {
   profesor: [
     { id: "dashboard", label: "Inicio", href: "dashboard.html" },
     { id: "buscarPgc", label: "Buscar PGC", href: "buscarPgc.html" },
     { id: "lineamiento", label: "Lineamientos", href: "lineamiento.html" },
+    OPCION_REPORTES,
   ],
   encargado: [
     { id: "dashboard", label: "Inicio", href: "dashboard.html" },
@@ -65,6 +72,7 @@ const MENU_POR_CONTEXTO = {
       ],
     },
     { id: "buscarPgc", label: "Buscar PGC", href: "buscarPgc.html" },
+    OPCION_REPORTES,
   ],
   jurado: [
     { id: "dashboard", label: "Inicio", href: "dashboard.html" },
@@ -84,6 +92,7 @@ const MENU_POR_CONTEXTO = {
       ],
     },
     { id: "buscarPgc", label: "Buscar PGC", href: "buscarPgc.html" },
+    OPCION_REPORTES,
   ],
 };
 

@@ -36,6 +36,7 @@ const DESCRIPCION_ACCESO = {
   configurarFecha: "Define las ventanas de radicación, registro, sustentación y calificación.",
   calificar: "Califica los PGC habilitados en el periodo de calificación.",
   calificado: "Consulta las notas y comentarios que ya registraste.",
+  reportes: "Descarga el informe de avance de PGC, en general o por ciclos.",
 };
 
 const CLASE_ESTADO_PANEL = {

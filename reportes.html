@@ -26,7 +26,12 @@
         <p class="text-muted">Generación y visualización de reportes del sistema.</p>
       </div>
 
-      <p class="text-muted fst-italic">Contenido de esta vista: pendiente para el siguiente sprint.</p>
+      <div id="banner" class="banner hidden"></div>
+
+      <div class="d-flex gap-3">
+        <button type="button" class="btn btn-primary" id="btn-informe-general">Descargar PDF general</button>
+        <button type="button" class="btn btn-outline-primary" id="btn-informe-ciclos">Descargar PDF por ciclos</button>
+      </div>
     </main>
   </div>
 
@@ -38,11 +43,13 @@
   <script src="components/navbar.js"></script>
   <script src="components/sidebar.js"></script>
   <script src="components/footer.js"></script>
+  <script src="js/reportes.js"></script>
   <script>
     requerirRol(["profesor", "administrador"]);
     renderizarBarraSuperior("topbar");
     renderizarBarraLateral("sidebar", "reportes").catch(console.error);
     renderizarPiePagina("footer");
+    inicializarReportes();
   </script>
 </body>
 </html>
