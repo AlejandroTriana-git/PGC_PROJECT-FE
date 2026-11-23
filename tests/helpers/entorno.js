@@ -85,6 +85,8 @@ function crearRespuesta(status, body) {
       if (body === undefined) throw new Error("sin cuerpo");
       return body;
     },
+    // Para endpoints que descargan un archivo (ej. los PDF de reportes.js)
+    blob: async () => new Blob([JSON.stringify(body ?? {})], { type: "application/octet-stream" }),
   };
 }
 

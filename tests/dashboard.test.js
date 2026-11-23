@@ -213,7 +213,7 @@ describe("pintarResumen y pintarAccesos", () => {
   test("accesos rápidos: las opciones del menú (menos Inicio) con su descripción", async () => {
     await pintarAccesos({ rol: "administrador" });
     const titulos = [...$("contenedor-accesos").querySelectorAll(".acceso-titulo")].map((t) => t.textContent);
-    expect(titulos).toEqual(["Ciclos →", "Usuarios →", "Buscar PGC →", "Lineamientos →"]);
+    expect(titulos).toEqual(["Ciclos →", "Usuarios →", "Buscar PGC →", "Lineamientos →", "Reportes →"]);
     expect($("contenedor-accesos").textContent).toContain("Crea y edita ciclos, encargados y jurados.");
   });
 });
