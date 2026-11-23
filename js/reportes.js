@@ -33,10 +33,10 @@ async function descargarInformePdf(ruta, nombreArchivo) {
 /** Conecta los botones de la página. Se llama desde el <script> de reportes.html. */
 function inicializarReportes() {
   document.getElementById("btn-informe-general").addEventListener("click", () => {
-    descargarInformePdf("/pgc/informe/general/pdf", "informe-avance-general.pdf");
+    descargarInformePdf("/pgc/informe/general/pdf", "informe-avance-general.pdf").catch(console.error);
   });
 
   document.getElementById("btn-informe-ciclos").addEventListener("click", () => {
-    descargarInformePdf("/pgc/informe/ciclos/pdf", "informe-avance-por-ciclos.pdf");
+    descargarInformePdf("/pgc/informe/ciclos/pdf", "informe-avance-por-ciclos.pdf").catch(console.error);
   });
 }
